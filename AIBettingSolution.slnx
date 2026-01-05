@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="AIBettingAnalyst/AIBettingAnalyst.csproj" />
+  <Project Path="AIBettingExecutor/AIBettingExecutor.csproj" />
+  <Project Path="AIBettingExplorer/AIBettingExplorer.csproj" />
+  <Project Path="TradeLogger/TradeLogger.csproj" />
+</Solution>
