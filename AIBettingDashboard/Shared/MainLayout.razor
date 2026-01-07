@@ -1,0 +1,26 @@
+@inherits LayoutComponentBase
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Routing
+
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Color="Color.Primary" Elevation="1">
+        <MudText Typo="Typo.h6">AIBE-MAS Dashboard</MudText>
+    </MudAppBar>
+
+    <MudDrawer Open="true" ClipMode="DrawerClipMode.Always" Elevation="1">
+        <MudNavMenu>
+            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+            <MudNavLink Href="/prices" Icon="@Icons.Material.Filled.ShowChart">Prezzi</MudNavLink>
+            <MudNavLink Href="/signals" Icon="@Icons.Material.Filled.Bolt">Segnali</MudNavLink>
+            <MudNavLink Href="/orders" Icon="@Icons.Material.Filled.List">Ordini</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
