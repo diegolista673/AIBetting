@@ -19,8 +19,8 @@ public class TradingDbContextFactory : IDesignTimeDbContextFactory<TradingDbCont
         var config = builder.Build();
 
         var connectionString = config.GetConnectionString("Accounting")
-            ?? config["ACCOUNTING_CONNECTION"]
-            ?? "Host=localhost;Port=5432;Database=aibetting;Username=postgres;Password=postgres";
+            ?? config["ACCOUNTING"]
+            ?? "Host=localhost;Port=5432;Database=aibetting;Username=postgres;Password=admin";
 
         var optionsBuilder = new DbContextOptionsBuilder<TradingDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

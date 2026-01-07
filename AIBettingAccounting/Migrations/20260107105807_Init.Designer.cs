@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AIBettingAccounting.Migrations
 {
     [DbContext(typeof(TradingDbContext))]
-    [Migration("20260105144405_Init")]
+    [Migration("20260107105807_Init")]
     partial class Init
     {
         /// <inheritdoc />
