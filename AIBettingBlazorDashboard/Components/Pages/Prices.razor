@@ -1,0 +1,59 @@
+@page "/prices"
+@using MudBlazor
+@using System.Linq
+@using StackExchange.Redis
+@using AIBettingCore
+@* @inject ConnectionMultiplexer Redis *@
+
+<PageTitle>Prezzi Live</PageTitle>
+
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h5">Prezzi Live (esempio)</MudText>
+    <MudText Typo="Typo.subtitle2">Mostra valori dal Redis Hash `prices:{marketId}:{selectionId}`</MudText>
+
+    <MudStack Class="mt-4" Spacing="2">
+        <MudTextField @bind-Value="MarketId" Label="Market Id" Variant="Variant.Outlined" />
+        <MudTextField @bind-Value="SelectionId" Label="Selection Id" Variant="Variant.Outlined" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadPrice">Carica</MudButton>
+    </MudStack>
+
+    @if (Loaded)
+    {
+        <MudSimpleTable>
+            <thead>
+                <tr>
+                    <th>Campo</th>
+                    <th>Valore</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Entries)
+                {
+                    <tr>
+                        <td>@e.Name</td>
+                        <td>@e.Value</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+@code {
+    string MarketId { get; set; } = "1.23456789";
+    string SelectionId { get; set; } = "12345";
+    bool Loaded { get; set; }
+    List<(string Name,string Value)> Entries { get; set; } = new();
+
+    private Task LoadPrice()
+    {
+        Entries = new()
+    {
+        ("lpm", "2.10"),
+        ("ts", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString()),
+        ("wap", "2.11")
+      };
+        Loaded = true;
+        return Task.CompletedTask;
+    }
+}

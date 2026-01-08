@@ -1,0 +1,61 @@
+@page "/signals"
+@using MudBlazor
+@using System.Linq
+@using StackExchange.Redis
+@using AIBettingCore
+@* @inject ConnectionMultiplexer Redis *@
+
+<PageTitle>Segnali Live</PageTitle>
+
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h5">Segnali Live (esempio)</MudText>
+    <MudText Typo="Typo.subtitle2">Ultimo segnale da `signals:{marketId}:{selectionId}`</MudText>
+
+    <MudStack Class="mt-4" Spacing="2">
+        <MudTextField @bind-Value="MarketId" Label="Market Id" Variant="Variant.Outlined" />
+        <MudTextField @bind-Value="SelectionId" Label="Selection Id" Variant="Variant.Outlined" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadSignal">Carica</MudButton>
+    </MudStack>
+
+    @if (Loaded)
+    {
+        <MudSimpleTable>
+            <thead>
+                <tr>
+                    <th>Campo</th>
+                    <th>Valore</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Entries)
+                {
+                    <tr>
+                        <td>@e.Name</td>
+                        <td>@e.Value</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+@code {
+    string MarketId { get; set; } = "1.23456789";
+    string SelectionId { get; set; } = "12345";
+    bool Loaded { get; set; }
+    List<(string Name,string Value)> Entries { get; set; } = new();
+
+    private Task LoadSignal()
+    {
+        Entries = new()
+    {
+        ("type", "BACK"),
+        ("odds", "2.10"),
+        ("stake", "100"),
+        ("ts", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString()),
+        ("reason", "Demo signal")
+    };
+        Loaded = true;
+        return Task.CompletedTask;
+    }
+}
