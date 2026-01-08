@@ -10,7 +10,7 @@
 | Nome Progetto | AIBE-MAS (AI Betting Multi-Agent System) |
 | Versione | 1.0.0 |
 | Target Framework | .NET 10 |
-| Linguaggio | C# 13 |
+| Linguaggio | C# 14 |
 | Architettura | Microservizi asincroni (Event-Driven) |
 | Formato Solution | .slnx |
 | Repository | https://github.com/diegolista673/AIBetting |
