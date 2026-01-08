@@ -1,7 +1,11 @@
 <Solution>
   <Folder Name="/Documentazione/">
+    <File Path="Documentazione/Design.md" />
+    <File Path="Documentazione/dimensionamento.md" />
     <File Path="Documentazione/Documento_Progetto_AIBE-MAS.md" />
+    <File Path="Documentazione/RiskManager-Guida.md" />
     <File Path="Documentazione/Specifiche.md" />
+    <File Path="Documentazione/UML.md" />
   </Folder>
   <Project Path="AIBettingAccounting/AIBettingAccounting.csproj" />
   <Project Path="AIBettingAnalyst/AIBettingAnalyst.csproj" />
