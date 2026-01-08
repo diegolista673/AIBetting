@@ -157,7 +157,7 @@ OK
 1. Avvia con tools: `docker-compose -f docker-compose.postgresql.yml --profile tools up -d`
 2. Apri browser: http://localhost:5050
 3. Login:
-   - Email: `admin@aibetting.local`
+   - Email: `admin@aibetting.com`
    - Password: `admin`
 4. Add server:
    - Name: `AIBetting`

@@ -45,6 +45,9 @@ PONG
 | | Password | `AIBet2024!WinRate` |
 | Redis | Host | `localhost:6379` |
 | | Password | `RedisAIBet2024!` |
+| **pgAdmin** | Email | `admin@aibetting.com` |
+| | Password | `admin` |
+| | URL | http://localhost:5050 |
 
 ---
 

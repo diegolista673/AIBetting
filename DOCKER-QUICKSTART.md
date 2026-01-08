@@ -84,7 +84,7 @@ dotnet run
 | | Port | `5432` |
 | **Redis** | Password | `RedisAIBet2024!` |
 | | Port | `6379` |
-| **pgAdmin** | Email | `admin@aibetting.local` |
+| **pgAdmin** | Email | `admin@aibetting.com` |
 | | Password | `admin` |
 | | URL | http://localhost:5050 |
 | **RedisInsight** | URL | http://localhost:5540 |
