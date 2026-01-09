@@ -1,0 +1,62 @@
+# AIBetting - Docker Ignore File
+# Esclude file non necessari dal build context Docker
+
+# .NET build artifacts
+**/bin/
+**/obj/
+**/out/
+**/.vs/
+
+# User-specific files
+*.suo
+*.user
+*.userospolation
+*.sln.docstates
+
+# Logs
+**/logs/
+*.log
+
+# Test results
+**/TestResults/
+
+# NuGet packages
+**/packages/
+*.nupkg
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Backup files
+*.bak
+*.backup
+backup_*.sql
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in containers)
+Documentazione/
+*.md
+!README.md
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Certificates (NEVER copy to image)
+*.pfx
+*.p12
+*.key
+*.pem
+*.crt

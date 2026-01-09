@@ -1,0 +1,61 @@
+# Prometheus Configuration for AIBetting
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  external_labels:
+    monitor: 'aibetting-monitor'
+
+# Alerting configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files (optional - for alerts)
+rule_files:
+  # - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Redis metrics via Redis Exporter
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+          instance: 'aibetting_redis'
+
+  # PostgreSQL metrics via Postgres Exporter
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgres'
+          instance: 'aibetting_postgres'
+
+  # AIBetting services metrics (when implemented)
+  # Uncomment when you add Prometheus.NET to your services
+  # - job_name: 'aibetting-explorer'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:5001']
+  #       labels:
+  #         service: 'explorer'
+  
+  # - job_name: 'aibetting-analyst'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:5002']
+  #       labels:
+  #         service: 'analyst'
+  
+  # - job_name: 'aibetting-executor'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:5003']
+  #       labels:
+  #         service: 'executor'
