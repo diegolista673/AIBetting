@@ -7,6 +7,9 @@
     <File Path="Documentazione/Specifiche.md" />
     <File Path="Documentazione/UML.md" />
   </Folder>
+  <Folder Name="/Elementi di soluzione/">
+    <File Path="Note.txt" />
+  </Folder>
   <Project Path="AIBettingAccounting/AIBettingAccounting.csproj" />
   <Project Path="AIBettingAnalyst/AIBettingAnalyst.csproj" />
   <Project Path="AIBettingBlazorDashboard/AIBettingBlazorDashboard.csproj" Id="d49abee8-9634-4522-a7d3-4d69b827b416" />

@@ -1,4 +1,5 @@
 using AIBettingBlazorDashboard.Components;
+using AIBettingBlazorDashboard.Configuration;
 using MudBlazor.Services;
 using Serilog;
 using StackExchange.Redis;
@@ -24,6 +25,10 @@ namespace AIBettingBlazorDashboard
                 .AddInteractiveServerComponents();
 
             builder.Services.AddMudServices();
+
+            // Configure Monitoring settings
+            builder.Services.Configure<MonitoringConfiguration>(
+                builder.Configuration.GetSection("Monitoring"));
 
             // Redis connection for reading live data
             //builder.Services.AddSingleton(async (sp) =>
