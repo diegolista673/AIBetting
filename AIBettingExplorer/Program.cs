@@ -1,15 +1,35 @@
-﻿using AIBettingExplorer;
+using AIBettingExplorer;
 using AIBettingCore.Interfaces;
 using StackExchange.Redis;
 using System.Text.Json;
 using Serilog;
-using Microsoft.Extensions.Logging;
+using Prometheus; // ← Aggiungi questo
 
-// Configure Serilog rolling file sink
+// Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .WriteTo.File(path: "logs/explorer-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7, fileSizeLimitBytes: 10_000_000)
     .CreateLogger();
+
+// Avvia metrics server
+var metricServer = new MetricServer(port: 5001);
+metricServer.Start();
+Log.Information("Prometheus metrics exposed on http://localhost:5001/metrics");
+
+// Define Prometheus metrics
+var priceUpdatesCounter = Metrics.CreateCounter(
+    "aibetting_price_updates_total",
+    "Total price updates from Betfair stream"
+);
+
+var streamLatencyHistogram = Metrics.CreateHistogram(
+    "aibetting_stream_latency_seconds",
+    "Latency from stream to Redis",
+    new HistogramConfiguration
+    {
+        Buckets = Histogram.ExponentialBuckets(0.001, 2, 10) // 1ms to ~1sec
+    }
+);
 
 try
 {
@@ -29,6 +49,7 @@ try
     await explorer.RunAsync(cts.Token);
 
     Log.Information("Explorer stopped");
+    metricServer.Stop();
 }
 catch (Exception ex)
 {
