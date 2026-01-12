@@ -49,9 +49,17 @@ public class RedisCacheBus : ICacheBus
 
     public async Task PublishPriceAsync(MarketSnapshot snapshot, CancellationToken ct)
     {
+        // Serialize and store the complete snapshot in Redis
+        var snapshotKey = $"prices:{snapshot.MarketId.Value}:{snapshot.Timestamp:O}";
+        var snapshotJson = JsonSerializer.Serialize(snapshot, _json);
+        await _db.StringSetAsync(snapshotKey, snapshotJson, TimeSpan.FromMinutes(5));
+        
+        // Publish notification with marketId and timestamp
         var payload = JsonSerializer.Serialize(new { snapshot.MarketId, snapshot.Timestamp }, _json);
         Log.Information("Publish price {MarketId} @ {Timestamp}", snapshot.MarketId.Value, snapshot.Timestamp);
         await _sub.PublishAsync(PriceUpdatesChannel, payload);
+        
+        // Store individual runner prices for quick access
         foreach (var r in snapshot.Runners)
         {
             var key = AIBettingCore.RedisKeys.Prices(snapshot.MarketId, r.SelectionId);

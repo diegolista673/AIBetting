@@ -36,6 +36,16 @@ scrape_configs:
           component: 'stream-consumer'
           environment: 'development'
 
+  # ✅ AIBettingAnalyst metrics (ACTIVE - Phase 2A)
+  - job_name: 'aibetting-analyst'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['192.168.208.1:5002']
+        labels:
+          service: 'analyst'
+          component: 'signal-generator'
+          environment: 'development'
+
   # Redis metrics via Redis Exporter
   - job_name: 'redis'
     static_configs:
@@ -51,17 +61,10 @@ scrape_configs:
         labels:
           service: 'postgres'
           instance: 'aibetting_postgres'
-
-  # AIBetting Analyst (quando implementato)
-  # - job_name: 'aibetting-analyst'
-  #   static_configs:
-  #     - targets: ['host.docker.internal:5002']
-  #       labels:
-  #         service: 'analyst'
   
   # AIBetting Executor (quando implementato)
   # - job_name: 'aibetting-executor'
   #   static_configs:
-  #     - targets: ['host.docker.internal:5003']
+  #     - targets: ['192.168.208.1:5003']
   #       labels:
   #         service: 'executor'

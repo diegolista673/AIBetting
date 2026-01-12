@@ -31,7 +31,27 @@ namespace AIBettingCore.Models
     {
         public required SelectionId SelectionId { get; init; }
         public required string RunnerName { get; init; }
-        public decimal? LastPriceMatched { get; init; }
+        
+        /// <summary>
+        /// Selection name (same as RunnerName for compatibility).
+        /// </summary>
+        public string SelectionName => RunnerName;
+        
+        /// <summary>
+        /// Last price traded (primary property for strategies).
+        /// </summary>
+        public decimal? LastPriceTraded { get; init; }
+        
+        /// <summary>
+        /// Last price matched (alias for LastPriceTraded for backward compatibility).
+        /// </summary>
+        public decimal? LastPriceMatched => LastPriceTraded;
+        
+        /// <summary>
+        /// Total amount matched on this runner.
+        /// </summary>
+        public decimal TotalMatched { get; init; }
+        
         public required IReadOnlyList<PriceSize> AvailableToBack { get; init; }
         public required IReadOnlyList<PriceSize> AvailableToLay { get; init; }
     }

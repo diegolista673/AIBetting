@@ -1,15 +1,15 @@
-@page "/monitoring"
+@page "/analyst"
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Options
 @using AIBettingBlazorDashboard.Configuration
 @inject NavigationManager NavigationManager
 @inject IOptions<MonitoringConfiguration> MonitoringConfig
 
-<PageTitle>Monitoring - AIBetting</PageTitle>
+<PageTitle>Analyst Monitoring - AIBetting</PageTitle>
 
 <div class="monitoring-container">
     <div class="monitoring-header">
-        <h1>📊 System Monitoring</h1>
+        <h1>📊 Analyst Performance Dashboard</h1>
         <div class="monitoring-actions">
             <button class="btn btn-primary" @onclick="RefreshDashboard">
                 <span class="oi oi-reload"></span> Refresh
@@ -17,24 +17,25 @@
             <button class="btn btn-secondary" @onclick="OpenGrafanaNewTab">
                 <span class="oi oi-external-link"></span> Open in Grafana
             </button>
-            <button class="btn btn-info" @onclick="ToggleFullscreen">
+            <button class="btn btn-info" @onclick="OpenAnalystMetrics">
+                <span class="oi oi-code"></span> Raw Metrics
+            </button>
+            <button class="btn btn-success" @onclick="ToggleFullscreen">
                 <span class="oi oi-fullscreen-enter"></span> @(isFullscreen ? "Exit" : "Fullscreen")
             </button>
         </div>
     </div>
 
-    <div class="dashboard-selector">
-        <label for="dashboardSelect">Select Dashboard:</label>
-        <select id="dashboardSelect" class="form-select" @bind="selectedDashboard" @bind:after="LoadDashboard">
-            @foreach (var dashboard in config.Dashboards)
-            {
-                <option value="@dashboard.Key">@dashboard.Value.Name</option>
-            }
-        </select>
-        @if (!string.IsNullOrEmpty(selectedDashboardDescription))
-        {
-            <small class="text-muted ms-2">@selectedDashboardDescription</small>
-        }
+    <div class="dashboard-info">
+        <div class="info-badge">
+            <strong>📈 Dashboard:</strong> AIBetting Analyst - Real-time Performance
+        </div>
+        <div class="info-badge">
+            <strong>🔄 Auto-Refresh:</strong> @config.AutoRefreshInterval
+        </div>
+        <div class="info-badge">
+            <strong>⏱️ Time Range:</strong> Last @config.DefaultTimeRange
+        </div>
     </div>
 
     @if (isLoading)
@@ -43,7 +44,7 @@
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading dashboard...</span>
             </div>
-            <p class="mt-3">Loading Grafana dashboard...</p>
+            <p class="mt-3">Loading Analyst Performance dashboard...</p>
         </div>
     }
     else if (!string.IsNullOrEmpty(errorMessage))
@@ -53,8 +54,10 @@
             <p>@errorMessage</p>
             <hr>
             <p class="mb-0">
-                Make sure Grafana is running: 
-                <a href="@config.GrafanaBaseUrl" target="_blank" class="alert-link">@config.GrafanaBaseUrl</a>
+                Make sure Grafana is running and the dashboard exists:
+                <a href="@($"{config.GrafanaBaseUrl}/d/aibetting-analyst")" target="_blank" class="alert-link">
+                    Open Dashboard Directly
+                </a>
             </p>
         </div>
     }
@@ -67,45 +70,56 @@
                 frameborder="0" 
                 allowfullscreen
                 @onload="OnIframeLoaded"
-                title="Grafana Dashboard">
+                title="Analyst Performance Dashboard">
             </iframe>
         </div>
     }
 
     <div class="monitoring-info">
         <div class="info-card">
-            <h5>📈 Real-time Metrics</h5>
+            <h5>📊 Analyst Metrics</h5>
             <ul>
-                <li><strong>Explorer:</strong> Price updates, Processing latency</li>
-                <li><strong>Infrastructure:</strong> Redis, PostgreSQL status</li>
-                <li><strong>Performance:</strong> CPU, Memory, Network</li>
+                <li><strong>Snapshots Processed:</strong> Total market snapshots analyzed</li>
+                <li><strong>Surebets Found:</strong> Arbitrage opportunities detected</li>
+                <li><strong>Signals Generated:</strong> Trading signals published</li>
+                <li><strong>Processing Latency:</strong> Analysis performance (p50/p95/p99)</li>
+                <li><strong>Expected ROI:</strong> Average expected return on investment</li>
             </ul>
         </div>
         <div class="info-card">
             <h5>🔗 Quick Links</h5>
             <ul>
-                <li><a href="@config.PrometheusBaseUrl" target="_blank">Prometheus UI</a></li>
-                <li><a href="@config.GrafanaBaseUrl" target="_blank">Grafana Full UI</a></li>
-                <li><a href="@config.ExplorerMetricsUrl" target="_blank">Explorer Metrics (Raw)</a></li>
                 <li><a href="@config.AnalystMetricsUrl" target="_blank">Analyst Metrics (Raw)</a></li>
-                <li><a href="/analyst" class="text-primary">Analyst Dashboard</a></li>
+                <li><a href="@config.PrometheusBaseUrl/graph?g0.expr=aibetting_analyst_snapshots_processed_total" target="_blank">Prometheus Query</a></li>
+                <li><a href="@config.GrafanaBaseUrl/d/aibetting-analyst" target="_blank">Grafana Full UI</a></li>
+                <li><a href="/monitoring" class="text-primary">Back to Monitoring Overview</a></li>
             </ul>
         </div>
         <div class="info-card">
-            <h5>⚙️ Dashboard Settings</h5>
+            <h5>🎯 Key Performance Indicators</h5>
             <ul>
-                <li><strong>Auto-Refresh:</strong> @config.AutoRefreshInterval</li>
-                <li><strong>Time Range:</strong> Last @config.DefaultTimeRange</li>
-                <li><strong>Mode:</strong> Kiosk (TV mode)</li>
+                <li><strong>Target Latency:</strong> &lt; 100ms per snapshot</li>
+                <li><strong>Surebet Threshold:</strong> Min 0.5% profit</li>
+                <li><strong>WAP Levels:</strong> 3 depth levels analyzed</li>
+                <li><strong>Strategies:</strong> Surebet detection, WoM analysis</li>
             </ul>
         </div>
+    </div>
+
+    <div class="alert alert-info mt-3" role="alert">
+        <h5 class="alert-heading">💡 Dashboard Tips</h5>
+        <ul class="mb-0">
+            <li>Use <strong>Time Range</strong> picker (top right) to change data window</li>
+            <li>Click on any panel to <strong>zoom in</strong> and see detailed data</li>
+            <li>Hover over graphs to see <strong>exact values</strong> at specific times</li>
+            <li>Click <strong>Fullscreen</strong> for TV/Kiosk mode presentation</li>
+            <li>If dashboard shows "No data", check that <strong>Analyst service is running</strong></li>
+        </ul>
     </div>
 </div>
 
 @code {
     private MonitoringConfiguration config = new();
-    private string selectedDashboard = string.Empty;
-    private string selectedDashboardDescription = string.Empty;
     private string embedUrl = string.Empty;
     private bool isLoading = true;
     private bool isFullscreen = false;
@@ -115,7 +129,6 @@
     protected override void OnInitialized()
     {
         config = MonitoringConfig.Value;
-        selectedDashboard = config.DefaultDashboard;
         LoadDashboard();
     }
 
@@ -127,17 +140,15 @@
 
         try
         {
-            if (config.Dashboards.TryGetValue(selectedDashboard, out var dashboardInfo))
+            if (config.Dashboards.TryGetValue("analyst", out var dashboardInfo))
             {
-                selectedDashboardDescription = dashboardInfo.Description;
-                
-                // Costruisci URL embed Grafana con parametri da configurazione
-                // kiosk=tv: nasconde menu e toolbar
+                // Build Grafana embed URL with kiosk mode
+                // kiosk=tv: hides menu and toolbar for clean embed
                 // refresh: auto-refresh interval
-                // from/to: time range
+                // from/to: time range (last 15 minutes by default)
                 embedUrl = $"{config.GrafanaBaseUrl}/d/{dashboardInfo.Uid}?orgId=1&kiosk=tv&refresh={config.AutoRefreshInterval}&from=now-{config.DefaultTimeRange}&to=now";
                 
-                // Simula caricamento per smooth UX
+                // Simulate loading for smooth UX
                 Task.Delay(500).ContinueWith(_ => 
                 {
                     InvokeAsync(() =>
@@ -149,7 +160,7 @@
             }
             else
             {
-                errorMessage = $"Dashboard '{selectedDashboard}' not found in configuration";
+                errorMessage = "Analyst dashboard not found in configuration. Make sure 'analyst' dashboard is configured in appsettings.json";
                 isLoading = false;
             }
         }
@@ -162,21 +173,27 @@
 
     private void RefreshDashboard()
     {
-        // Force iframe reload con cache bypass
+        // Force iframe reload with cache bypass
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        if (config.Dashboards.TryGetValue(selectedDashboard, out var dashboardInfo))
+        if (config.Dashboards.TryGetValue("analyst", out var dashboardInfo))
         {
             embedUrl = $"{config.GrafanaBaseUrl}/d/{dashboardInfo.Uid}?orgId=1&kiosk=tv&refresh={config.AutoRefreshInterval}&from=now-{config.DefaultTimeRange}&to=now&_={timestamp}";
         }
+        StateHasChanged();
     }
 
     private void OpenGrafanaNewTab()
     {
-        if (config.Dashboards.TryGetValue(selectedDashboard, out var dashboardInfo))
+        if (config.Dashboards.TryGetValue("analyst", out var dashboardInfo))
         {
             var fullUrl = $"{config.GrafanaBaseUrl}/d/{dashboardInfo.Uid}";
             NavigationManager.NavigateTo(fullUrl, true);
         }
+    }
+
+    private void OpenAnalystMetrics()
+    {
+        NavigationManager.NavigateTo(config.AnalystMetricsUrl, true);
     }
 
     private void ToggleFullscreen()

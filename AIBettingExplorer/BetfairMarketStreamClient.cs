@@ -211,7 +211,8 @@ public class BetfairMarketStreamClient : IMarketStreamClient
             {
                 SelectionId = new SelectionId(mockRunner.SelectionId),
                 RunnerName = mockRunner.Name,
-                LastPriceMatched = mockRunner.BackPrice,
+                LastPriceTraded = mockRunner.BackPrice,
+                TotalMatched = mockRunner.BackSize + mockRunner.LaySize,
                 AvailableToBack = new List<PriceSize>
                 {
                     new(mockRunner.BackPrice, mockRunner.BackSize),
