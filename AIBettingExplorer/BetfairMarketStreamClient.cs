@@ -30,6 +30,7 @@ public class BetfairMarketStreamClient : IMarketStreamClient
         public Dictionary<string, MockRunner> Runners { get; init; } = [];
     }
 
+
     private class MockRunner
     {
         public required string SelectionId { get; init; }
@@ -39,6 +40,7 @@ public class BetfairMarketStreamClient : IMarketStreamClient
         public decimal BackSize { get; set; }
         public decimal LaySize { get; set; }
     }
+
 
     /// <summary>
     /// Initialize mock connection and generate sample markets.
@@ -55,6 +57,7 @@ public class BetfairMarketStreamClient : IMarketStreamClient
         return Task.CompletedTask;
     }
 
+
     /// <summary>
     /// Disconnect mock stream.
     /// </summary>
@@ -64,6 +67,7 @@ public class BetfairMarketStreamClient : IMarketStreamClient
         Log.Information("Mock stream disconnected");
         return Task.CompletedTask;
     }
+
 
     /// <summary>
     /// Generate realistic market snapshots with dynamic price movements.
@@ -94,6 +98,7 @@ public class BetfairMarketStreamClient : IMarketStreamClient
             }
         }
     }
+
 
     /// <summary>
     /// Initialize mock markets with realistic Premier League fixtures.
@@ -161,6 +166,7 @@ public class BetfairMarketStreamClient : IMarketStreamClient
         }
     }
 
+
     /// <summary>
     /// Simulate realistic market dynamics: price movements, liquidity growth, spreads.
     /// </summary>
@@ -188,6 +194,7 @@ public class BetfairMarketStreamClient : IMarketStreamClient
             runner.LaySize = Math.Max(100, runner.LaySize);
         }
     }
+
 
     /// <summary>
     /// Convert mock market to MarketSnapshot domain model.
