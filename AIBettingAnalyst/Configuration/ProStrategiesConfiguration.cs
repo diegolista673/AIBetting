@@ -66,6 +66,7 @@ public class GreenUpConfig
     public double MinConfidence { get; init; } = 0.6;
     public decimal MinPriceImprovement { get; init; } = 3.0m;
     public decimal MinProfitThreshold { get; init; } = 1.0m;
+    public decimal DefaultHedgeStake { get; init; } = 50m;
 }
 
 public class ValueBetConfig

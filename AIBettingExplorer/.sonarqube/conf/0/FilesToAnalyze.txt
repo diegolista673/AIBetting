@@ -1,0 +1,9 @@
+﻿C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\Configuration\RedisSettings.cs
+C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\Interfaces\CoreInterfaces.cs
+C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\Interfaces\IRiskManager.cs
+C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\Models\MarketModels.cs
+C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\Models\Signals.cs
+C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\Models\TradingEntities.cs
+C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\RedisKeys.cs
+C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\Services\RedisPnLTracker.cs
+C:\Users\SMARTW\source\repos\AIBettingSolution\AIBettingCore\Services\RedisRiskManager.cs

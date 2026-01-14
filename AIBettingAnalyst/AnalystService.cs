@@ -56,6 +56,57 @@ public class AnalystService
         "Average expected ROI of generated signals"
     );
 
+    // ============================================================================
+    // NEW: PRO Strategy Detailed Metrics
+    // ============================================================================
+    
+    /// <summary>
+    /// Tracks signals by strategy, signal type, and risk level
+    /// </summary>
+    private static readonly Counter SignalsByType = Metrics.WithCustomRegistry(Metrics.DefaultRegistry).CreateCounter(
+        "aibetting_analyst_signals_by_type_total",
+        "Signals by strategy, type and risk level",
+        new CounterConfiguration { 
+            LabelNames = new[] { "strategy", "signal_type", "risk_level" } 
+        }
+    );
+
+    /// <summary>
+    /// Current confidence level of last signal per strategy
+    /// </summary>
+    private static readonly Gauge LastSignalConfidence = Metrics.WithCustomRegistry(Metrics.DefaultRegistry).CreateGauge(
+        "aibetting_analyst_last_signal_confidence",
+        "Confidence of last signal by strategy (0-1)",
+        new GaugeConfiguration { 
+            LabelNames = new[] { "strategy" } 
+        }
+    );
+
+    /// <summary>
+    /// Current ROI of last signal per strategy
+    /// </summary>
+    private static readonly Gauge LastSignalROI = Metrics.WithCustomRegistry(Metrics.DefaultRegistry).CreateGauge(
+        "aibetting_analyst_last_signal_roi",
+        "Expected ROI of last signal by strategy (percentage)",
+        new GaugeConfiguration { 
+            LabelNames = new[] { "strategy" } 
+        }
+    );
+
+    /// <summary>
+    /// Average confidence per strategy (rolling)
+    /// </summary>
+    private static readonly Gauge StrategyAverageConfidence = Metrics.WithCustomRegistry(Metrics.DefaultRegistry).CreateGauge(
+        "aibetting_analyst_strategy_avg_confidence",
+        "Rolling average confidence per strategy",
+        new GaugeConfiguration { 
+            LabelNames = new[] { "strategy" } 
+        }
+    );
+
+    // Track per-strategy stats
+    private readonly Dictionary<string, (double sumConfidence, double sumROI, long count)> _strategyStats = new();
+
     private long _totalSignalsGenerated = 0;
     private double _sumExpectedROI = 0;
 
@@ -168,7 +219,8 @@ public class AnalystService
                 MaxOdds = config.GreenUp.MaxOdds,
                 MinConfidence = config.GreenUp.MinConfidence,
                 MinPriceImprovement = config.GreenUp.MinPriceImprovement,
-                MinProfitThreshold = config.GreenUp.MinProfitThreshold
+                MinProfitThreshold = config.GreenUp.MinProfitThreshold,
+                DefaultHedgeStake = config.GreenUp.DefaultHedgeStake
             };
             strategies.Add(new GreenUpStrategy(greenConfig));
             Log.Information("✅ Green-Up Strategy enabled");
@@ -471,18 +523,55 @@ public class AnalystService
             signalJson
         );
 
-        // Update metrics
+        // Update basic metrics
         SignalsGenerated.WithLabels(signal.Strategy).Inc();
         _totalSignalsGenerated++;
         _sumExpectedROI += signal.ExpectedROI;
         AverageExpectedROI.Set(_sumExpectedROI / _totalSignalsGenerated);
 
-        Log.Information("✅ STRATEGY SIGNAL: {Strategy} {SignalType} on {Selection} - ROI: {ROI:F2}%, Confidence: {Conf:F2}",
+        // ============================================================================
+        // NEW: Update detailed PRO strategy metrics
+        // ============================================================================
+        
+        // Counter: Signals by type and risk
+        SignalsByType
+            .WithLabels(signal.Strategy, signal.SignalType, signal.Risk.ToString())
+            .Inc();
+
+        // Gauge: Last signal confidence
+        LastSignalConfidence
+            .WithLabels(signal.Strategy)
+            .Set(signal.Confidence);
+
+        // Gauge: Last signal ROI
+        LastSignalROI
+            .WithLabels(signal.Strategy)
+            .Set(signal.ExpectedROI);
+
+        // Update per-strategy rolling averages
+        if (!_strategyStats.ContainsKey(signal.Strategy))
+        {
+            _strategyStats[signal.Strategy] = (0, 0, 0);
+        }
+        
+        var (sumConf, sumROI, count) = _strategyStats[signal.Strategy];
+        sumConf += signal.Confidence;
+        sumROI += signal.ExpectedROI;
+        count++;
+        _strategyStats[signal.Strategy] = (sumConf, sumROI, count);
+
+        // Gauge: Average confidence per strategy
+        StrategyAverageConfidence
+            .WithLabels(signal.Strategy)
+            .Set(sumConf / count);
+
+        Log.Information("✅ STRATEGY SIGNAL: {Strategy} {SignalType} on {Selection} - ROI: {ROI:F2}%, Confidence: {Conf:F2}, Risk: {Risk}",
             signal.Strategy,
             signal.SignalType,
             signal.PrimarySelection?.SelectionName ?? "N/A",
             signal.ExpectedROI,
-            signal.Confidence);
+            signal.Confidence,
+            signal.Risk);
     }
 
     /// <summary>
