@@ -1,46 +1,36 @@
-# Prometheus Configuration for AIBetting System
-# Save as: prometheus.yml
+# Prometheus Configuration for AIBetting System (hybrid: apps on host, monitoring in Docker)
 
 global:
-  scrape_interval: 15s        # Scrape metrics every 15 seconds
-  evaluation_interval: 15s    # Evaluate alert rules every 15 seconds
+  scrape_interval: 15s
+  evaluation_interval: 15s
   external_labels:
-    cluster: 'aibetting-prod'
-    environment: 'production'
+    cluster: 'aibetting-local'
+    environment: 'hybrid'
 
-# Alertmanager configuration
 alerting:
   alertmanagers:
     - static_configs:
-        - targets:
-            - 'localhost:9093'  # Alertmanager address
+        - targets: ['alertmanager:9093']
 
-# Load alert rules
 rule_files:
-  - "alert-rules.yml"
+  - "/etc/prometheus/alert-rules.yml"
 
-# Scrape configurations
 scrape_configs:
-  # ============================================
-  # AIBetting Explorer Service
-  # ============================================
+  # AIBetting Applications (running on host machine)
   - job_name: 'aibetting-explorer'
     static_configs:
-      - targets: ['localhost:5001']
+      - targets: ['host.docker.internal:5001']
         labels:
           service: 'explorer'
           component: 'data-ingestion'
           tier: 'input'
     metrics_path: '/metrics'
-    scrape_interval: 10s  # More frequent for data ingestion
+    scrape_interval: 10s
     scrape_timeout: 5s
 
-  # ============================================
-  # AIBetting Analyst Service
-  # ============================================
   - job_name: 'aibetting-analyst'
     static_configs:
-      - targets: ['localhost:5002']
+      - targets: ['host.docker.internal:5002']
         labels:
           service: 'analyst'
           component: 'analysis-engine'
@@ -49,53 +39,41 @@ scrape_configs:
     scrape_interval: 15s
     scrape_timeout: 10s
 
-  # ============================================
-  # AIBetting Executor Service (MAIN)
-  # ============================================
   - job_name: 'aibetting-executor'
     static_configs:
-      - targets: ['localhost:5003']
+      - targets: ['host.docker.internal:5003']
         labels:
           service: 'executor'
           component: 'order-execution'
           tier: 'output'
     metrics_path: '/metrics'
-    scrape_interval: 10s  # Frequent for real-time trading
+    scrape_interval: 10s
     scrape_timeout: 5s
-    # Relabel to add instance-specific info
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'executor-primary'
 
-  # ============================================
-  # Prometheus Self-Monitoring
-  # ============================================
+  # Monitoring Stack (running in Docker)
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['prometheus:9090']
         labels:
           service: 'prometheus'
           component: 'monitoring'
 
-  # ============================================
-  # Redis Exporter (Optional)
-  # ============================================
   - job_name: 'redis'
     static_configs:
-      - targets: ['localhost:9121']  # Redis exporter default port
+      - targets: ['redis-exporter:9121']
         labels:
           service: 'redis'
           component: 'data-store'
     metrics_path: '/metrics'
     scrape_interval: 30s
 
-  # ============================================
-  # PostgreSQL Exporter (Optional - for Accounting DB)
-  # ============================================
   - job_name: 'postgresql'
     static_configs:
-      - targets: ['localhost:9187']  # Postgres exporter default port
+      - targets: ['postgres-exporter:9187']
         labels:
           service: 'postgresql'
           component: 'database'
@@ -103,31 +81,11 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 30s
 
-  # ============================================
-  # Node Exporter (Optional - System Metrics)
-  # ============================================
   - job_name: 'node'
     static_configs:
-      - targets: ['localhost:9100']  # Node exporter default port
+      - targets: ['node-exporter:9100']
         labels:
           service: 'node-exporter'
           component: 'system-metrics'
     metrics_path: '/metrics'
     scrape_interval: 30s
-
-# ============================================
-# Remote Write (Optional - for long-term storage)
-# ============================================
-# remote_write:
-#   - url: "http://localhost:9009/write"  # Thanos or VictoriaMetrics
-#     write_relabel_configs:
-#       - source_labels: [__name__]
-#         regex: 'aibetting_.*'
-#         action: keep
-
-# ============================================
-# Remote Read (Optional - for federated queries)
-# ============================================
-# remote_read:
-#   - url: "http://localhost:9009/read"
-#     read_recent: true

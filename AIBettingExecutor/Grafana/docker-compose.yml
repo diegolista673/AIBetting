@@ -11,7 +11,7 @@ services:
   # ============================================
   prometheus:
     image: prom/prometheus:latest
-    container_name: aibetting-prometheus
+    container_name: aibetting-prometheus-v2  # Changed name
     restart: unless-stopped
     ports:
       - "9090:9090"
@@ -48,7 +48,6 @@ services:
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana-provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
     networks:
@@ -77,23 +76,78 @@ services:
       - "com.aibetting.service=alertmanager"
 
   # ============================================
-  # Redis Exporter (Optional)
+  # Redis - Data store (optional in Docker)
+  # ============================================
+  redis:
+    image: redis:6-alpine
+    container_name: aibetting-redis
+    restart: unless-stopped
+    ports:
+      - "16379:6379"  # Changed to avoid conflict with local Redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - aibetting-monitoring
+    labels:
+      - "com.aibetting.service=redis"
+
+  # ============================================
+  # Redis Exporter
   # ============================================
   redis-exporter:
     image: oliver006/redis_exporter:latest
     container_name: aibetting-redis-exporter
     restart: unless-stopped
     ports:
-      - "9121:9121"
+      - "9122:9121" # Changed external port to avoid conflict
     environment:
-      - REDIS_ADDR=host.docker.internal:6379
-      - REDIS_PASSWORD=RedisAIBet2024!
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+    depends_on:
+      - redis
     networks:
       - aibetting-monitoring
     labels:
       - "com.aibetting.service=redis-exporter"
+
+  # ============================================
+  # PostgreSQL - Database
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: aibetting-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=aibetting
+      - POSTGRES_PASSWORD=AIBetting2024!
+      - POSTGRES_DB=aibetting_accounting
+    ports:
+      - "15432:5432"  # Changed to avoid conflict with local PostgreSQL
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - aibetting-monitoring
+    labels:
+      - "com.aibetting.service=postgres"
+
+  # ============================================
+  # PostgreSQL Exporter
+  # ============================================
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: aibetting-postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://aibetting:AIBetting2024!@postgres:5432/aibetting_accounting?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+    networks:
+      - aibetting-monitoring
+    labels:
+      - "com.aibetting.service=postgres-exporter"
 
   # ============================================
   # Node Exporter - System Metrics
@@ -120,7 +174,7 @@ services:
 networks:
   aibetting-monitoring:
     driver: bridge
-    name: aibetting-monitoring
+    name: aibetting-monitoring-v2  # Changed from aibetting-monitoring
 
 volumes:
   prometheus-data:
@@ -128,4 +182,8 @@ volumes:
   grafana-data:
     driver: local
   alertmanager-data:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
     driver: local

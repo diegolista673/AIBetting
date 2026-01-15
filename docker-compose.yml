@@ -1,5 +1,5 @@
 # AIBetting - Complete Infrastructure Stack
-# PostgreSQL + Redis + pgAdmin + RedisInsight + Monitoring (Grafana + Prometheus)
+# PostgreSQL + Redis + pgAdmin + RedisInsight + Monitoring (Grafana + Prometheus + Alertmanager)
 
 version: '3.8'
 
@@ -93,8 +93,25 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./AIBettingExecutor/Grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./AIBettingExecutor/Grafana/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
       - prometheus_data:/prometheus
+    networks:
+      - aibetting_network
+    profiles:
+      - monitoring
+
+  # Alertmanager - Alert routing
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: aibetting_alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./AIBettingExecutor/Grafana/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     networks:
       - aibetting_network
     profiles:

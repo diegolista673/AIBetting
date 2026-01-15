@@ -1,10 +1,11 @@
-// See https://aka.ms/new-console-template for more information
+
 using AIBettingCore.Interfaces;
 using AIBettingCore.Services;
 using AIBettingExecutor;
 using AIBettingExecutor.Accounting;
 using AIBettingExecutor.BetfairAPI;
 using AIBettingExecutor.Configuration;
+using AIBettingExecutor.Interfaces;
 using AIBettingExecutor.OrderManagement;
 using AIBettingExecutor.RiskManagement;
 using AIBettingExecutor.SignalProcessing;
@@ -35,17 +36,20 @@ try
     var config = configuration.GetSection("Executor").Get<ExecutorConfiguration>() 
         ?? new ExecutorConfiguration();
 
-    // Validate configuration
-    if (string.IsNullOrEmpty(config.Betfair.AppKey))
+    // Validate configuration only when not using mock client
+    if (!config.Trading.UseMockBetfair)
     {
-        Log.Error("❌ Betfair AppKey not configured");
-        return;
-    }
+        if (string.IsNullOrEmpty(config.Betfair.AppKey))
+        {
+            Log.Error("❌ Betfair AppKey not configured");
+            return;
+        }
 
-    if (string.IsNullOrEmpty(config.Betfair.CertificatePath))
-    {
-        Log.Error("❌ Betfair certificate path not configured");
-        return;
+        if (string.IsNullOrEmpty(config.Betfair.CertificatePath))
+        {
+            Log.Error("❌ Betfair certificate path not configured");
+            return;
+        }
     }
 
     Log.Information("Configuration loaded:");
@@ -54,10 +58,11 @@ try
     Log.Information("  Redis: {Connection}", config.Redis.ConnectionString);
     Log.Information("  Risk Management: {Enabled}", config.Risk.Enabled ? "ENABLED" : "DISABLED");
     Log.Information("  Paper Trading: {Enabled}", config.Trading.EnablePaperTrading ? "ENABLED" : "DISABLED");
+    Log.Information("  Use Mock Betfair: {UseMock}", config.Trading.UseMockBetfair ? "YES" : "NO");
     Log.Information("  Prometheus Port: {Port}", config.PrometheusMetricsPort);
 
-    // Start Prometheus metrics server
-    var metricsServer = new MetricServer(port: config.PrometheusMetricsPort);
+    // Start Prometheus metrics server using Kestrel to avoid HttpListener ACL issues
+    var metricsServer = new KestrelMetricServer(port: config.PrometheusMetricsPort);
     metricsServer.Start();
     Log.Information("📊 Prometheus metrics server started on port {Port}", config.PrometheusMetricsPort);
 
@@ -67,11 +72,13 @@ try
     Log.Information("✅ Redis connected");
 
     // Initialize components
-    var betfairClient = new BetfairClient(
-        config.Betfair.AppKey,
-        config.Betfair.CertificatePath,
-        config.Betfair.CertificatePassword,
-        Log.ForContext<BetfairClient>());
+    IBetfairClient betfairClient = config.Trading.UseMockBetfair
+        ? new MockBetfairClient(Log.ForContext<MockBetfairClient>())
+        : new BetfairClient(
+            config.Betfair.AppKey,
+            config.Betfair.CertificatePath,
+            config.Betfair.CertificatePassword,
+            Log.ForContext<BetfairClient>());
 
     var orderManager = new OrderManager(
         betfairClient,

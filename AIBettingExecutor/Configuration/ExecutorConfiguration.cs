@@ -107,4 +107,5 @@ public class TradingSettings
     public decimal MaxOdds { get; init; } = 1000m;
     public decimal MinStake { get; init; } = 2m;
     public bool EnablePaperTrading { get; init; } = false;
+    public bool UseMockBetfair { get; init; } = false;
 }

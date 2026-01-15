@@ -12,73 +12,52 @@ Dashboard completa per monitoraggio real-time dell'**AIBettingExecutor** con 22 
 
 ---
 
+## 📚 **DOCUMENTAZIONE COMPLETA**
+
+**Prima di iniziare, leggi questi documenti:**
+
+1. **✅ [SOLUTION_SUMMARY.md](SOLUTION_SUMMARY.md)** - **INIZIA QUI!** Risoluzione completa errore Redis connection
+2. **[STACK_RESTORATION_COMPLETE.md](STACK_RESTORATION_COMPLETE.md)** - Guida completa ripristino stack Docker
+3. **[CONFIGURATION_CHANGES.md](CONFIGURATION_CHANGES.md)** - Dettagli modifiche configurazioni
+4. **[README.md](README.md)** - Questo file - Setup Grafana dashboard
+
+**Scripts PowerShell disponibili:**
+- `verify-stack.ps1` - Verifica health check completa
+- `test-connectivity.ps1` - Test Redis e PostgreSQL
+- `test-e2e.ps1` - Test end-to-end completo
+- `migration-summary.ps1` - Riepilogo migrazione
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-1. **Prometheus** running e scraping metrics da Executor (porta 5003)
-2. **Grafana** installato (versione 9.0+)
+1. **Docker Stack** avviato con Redis, PostgreSQL, Prometheus, Grafana
+2. **Configurazioni** aggiornate (vedi CONFIGURATION_CHANGES.md)
 
 ### Installation
 
-#### Step 1: Start Prometheus
+#### Step 1: Avvia Stack Docker
 
-Crea `prometheus.yml`:
-
-```yaml
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-scrape_configs:
-  - job_name: 'aibetting-executor'
-    static_configs:
-      - targets: ['localhost:5003']
-        labels:
-          service: 'executor'
-          
-  - job_name: 'aibetting-analyst'
-    static_configs:
-      - targets: ['localhost:5002']
-        labels:
-          service: 'analyst'
-          
-  - job_name: 'aibetting-explorer'
-    static_configs:
-      - targets: ['localhost:5001']
-        labels:
-          service: 'explorer'
-```
-
-Avvia Prometheus:
 ```bash
-prometheus --config.file=prometheus.yml
+cd AIBettingExecutor\Grafana
+docker compose up -d
+docker compose ps  # Verifica tutti running
 ```
 
-Verifica: `http://localhost:9090`
+Servizi disponibili:
+- ✅ Prometheus: http://localhost:9090
+- ✅ Grafana: http://localhost:3000 (admin/admin)
+- ✅ Alertmanager: http://localhost:9093
+- ✅ Redis: localhost:16379
+- ✅ PostgreSQL: localhost:15432
 
-#### Step 2: Install Grafana
+#### Step 2: Verifica Prometheus
 
-**Windows:**
-```powershell
-# Download from https://grafana.com/grafana/download
-# Or via Chocolatey:
-choco install grafana
+Accedi a http://localhost:9090/targets e verifica i target configurati.
 
-# Start service
-grafana-server.exe
-```
-
-**Linux:**
-```bash
-sudo apt-get install -y grafana
-sudo systemctl start grafana-server
-sudo systemctl enable grafana-server
-```
-
-Verifica: `http://localhost:3000` (admin/admin)
-
-#### Step 3: Configure Prometheus Data Source
+#### Step 3: Configure Prometheus Data Source in Grafana
 
 1. Login a Grafana: `http://localhost:3000`
 2. Vai a **Configuration** → **Data Sources**
