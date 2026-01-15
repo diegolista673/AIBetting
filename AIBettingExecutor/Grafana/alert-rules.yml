@@ -1,0 +1,429 @@
+# Prometheus Alert Rules for AIBetting System
+# Save as: alert-rules.yml
+# Reference in prometheus.yml with: rule_files: ["alert-rules.yml"]
+
+groups:
+  # ============================================
+  # EXECUTOR - Critical Alerts
+  # ============================================
+  - name: executor_critical
+    interval: 30s
+    rules:
+      - alert: ExecutorBetfairDisconnected
+        expr: aibetting_executor_betfair_connection_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: executor
+          alert_type: connectivity
+        annotations:
+          summary: "🔴 Betfair API disconnected"
+          description: "Executor lost connection to Betfair API for more than 1 minute"
+          action: "Check certificate, credentials, and network connectivity"
+
+      - alert: ExecutorCircuitBreakerTriggered
+        expr: aibetting_executor_circuit_breaker_status == 1
+        for: 30s
+        labels:
+          severity: critical
+          service: executor
+        annotations:
+          summary: "Circuit breaker activated"
+          description: "Trading halted due to excessive failures"
+
+      - alert: CriticalAccountBalance
+        expr: aibetting_executor_available_balance < 100
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical account balance"
+          description: "Available balance: {{ $value | humanize }}£ - URGENT ACTION REQUIRED"
+
+  # ============================================
+  # WARNING Alerts
+  # ============================================
+  - name: executor_warnings
+    interval: 30s
+    rules:
+      # High order failure rate
+      - alert: HighOrderFailureRate
+        expr: rate(aibetting_executor_orders_failed_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: executor
+        annotations:
+          summary: "High order failure rate detected"
+          description: "{{ $value | humanize }} orders failing per second (>6/min)"
+
+      # High signal rejection rate
+      - alert: HighSignalRejectionRate
+        expr: |
+          (
+            rate(aibetting_executor_signals_rejected_total[5m]) 
+            / 
+            rate(aibetting_executor_signals_received_total[5m])
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High signal rejection rate"
+          description: "More than 50% of signals rejected in last 5 minutes"
+
+      # ============================================
+      # Performance Alerts
+      # ============================================
+      
+      # Warning: High Execution Latency
+      - alert: HighExecutionLatency
+        expr: histogram_quantile(0.99, rate(aibetting_executor_order_execution_latency_seconds_bucket[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: executor
+        annotations:
+          summary: "High order execution latency detected"
+          description: "P99 latency is {{ $value | humanizeDuration }} (threshold: 200ms)"
+
+      # Critical: Very High Execution Latency
+      - alert: CriticalExecutionLatency
+        expr: histogram_quantile(0.99, rate(aibetting_executor_order_execution_latency_seconds_bucket[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical execution latency"
+          description: "P99 latency > 500ms - system may be overloaded"
+
+      # Warning: High Betfair API Latency
+      - alert: HighBetfairAPILatency
+        expr: histogram_quantile(0.99, rate(aibetting_executor_betfair_api_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Betfair API latency"
+          description: "P99 Betfair API latency > 500ms for 5 minutes"
+
+      # ============================================
+      # Balance & Exposure Alerts
+      # ============================================
+
+      - alert: LowAccountBalance
+        expr: aibetting_executor_available_balance < 500
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low account balance"
+          description: "Available balance: {{ $value | humanize }}£ - Below £500 threshold"
+
+      - alert: CriticalAccountBalance
+        expr: aibetting_executor_available_balance < 100
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Very low account balance"
+          description: "Available balance: £{{ $value }} - Trading may halt soon"
+
+      - alert: HighExposure
+        expr: aibetting_executor_current_exposure > 450
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High exposure detected"
+          description: "Current exposure ({{ $value }}£) exceeds warning threshold of £450"
+
+      # ============================================
+      # Latency Alerts
+      # ============================================
+      - alert: HighExecutionLatency
+        expr: histogram_quantile(0.99, rate(aibetting_executor_order_execution_latency_seconds_bucket[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: executor
+        annotations:
+          summary: "High order execution latency detected"
+          description: "P99 execution latency is {{ $value | humanizeDuration }} (threshold: 200ms)"
+
+      - alert: CriticalExecutionLatency
+        expr: histogram_quantile(0.99, rate(aibetting_executor_order_execution_latency_seconds_bucket[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical order execution latency"
+          description: "P99 latency > 500ms - orders may be rejected"
+
+      # API Latency
+      - alert: HighBetfairAPILatency
+        expr: histogram_quantile(0.95, rate(aibetting_executor_betfair_api_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Betfair API latency"
+          description: "P95 API latency > 500ms for 5 minutes"
+
+      # Risk Management Alerts
+      - alert: HighExposure
+        expr: aibetting_executor_current_exposure > 450
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High exposure detected"
+          description: "Current exposure is {{ $value | humanize }}£, exceeds 450 threshold"
+
+      - alert: CriticalExposure
+        expr: aibetting_executor_current_exposure > 480
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Exposure limit reached"
+          description: "Exposure at {{ $value }} - approaching max limit of 500"
+
+      # Low Balance Alerts
+      - alert: LowAccountBalance
+        expr: aibetting_executor_available_balance < 500
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low account balance"
+          description: "Available balance: {{ $value | humanize }}. Consider topping up."
+
+      - alert: CriticalAccountBalance
+        expr: aibetting_executor_available_balance < 100
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Account balance very low"
+          description: "Available balance: {{ $value }} - Trading will halt soon"
+
+      # =============================================
+      # Performance Alerts
+      # ============================================
+
+      - alert: HighOrderExecutionLatency
+        expr: histogram_quantile(0.99, rate(aibetting_executor_order_execution_latency_seconds_bucket[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          component: executor
+        annotations:
+          summary: "High order execution latency detected"
+          description: "P99 execution latency is {{ $value | humanizeDuration }} (threshold: 200ms)"
+
+      - alert: HighBetfairAPILatency
+        expr: histogram_quantile(0.99, rate(aibetting_executor_betfair_api_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: betfair
+        annotations:
+          summary: "High Betfair API latency"
+          description: "P99 API latency is {{ $value | humanizeDuration }} (threshold: 500ms)"
+
+      # ================================================
+      # Risk Management Alerts
+      # ================================================
+      - alert: HighExposure
+        expr: aibetting_executor_current_exposure > 450
+        for: 2m
+        labels:
+          severity: warning
+          component: risk
+        annotations:
+          summary: "High market exposure"
+          description: "Current exposure is £{{ $value | humanize }} (limit: £500)"
+
+      - alert: CriticalExposure
+        expr: aibetting_executor_current_exposure > 480
+        for: 1m
+        labels:
+          severity: critical
+          component: risk
+        annotations:
+          summary: "CRITICAL: Exposure near limit"
+          description: "Current exposure is £{{ $value | humanize }} - near max limit of £500"
+
+      - alert: LowAccountBalance
+        expr: aibetting_executor_available_balance < 500
+        for: 1m
+        labels:
+          severity: warning
+          component: account
+        annotations:
+          summary: "Low account balance"
+          description: "Available balance is £{{ $value | humanize }} (warning: <£500)"
+
+      - alert: CriticalAccountBalance
+        expr: aibetting_executor_available_balance < 100
+        for: 30s
+        labels:
+          severity: critical
+          component: account
+        annotations:
+          summary: "CRITICAL: Very low balance"
+          description: "Available balance is £{{ $value | humanize }} - trading may halt"
+
+      # ================================================
+      # Order Quality Alerts
+      # ================================================
+      - alert: HighOrderFailureRate
+        expr: rate(aibetting_executor_orders_failed_total[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          component: executor
+        annotations:
+          summary: "High order failure rate"
+          description: "{{ $value | humanize }} orders failing per second (threshold: 0.1/s)"
+
+      - alert: HighOrderCancellationRate
+        expr: rate(aibetting_executor_orders_cancelled_total[5m]) / rate(aibetting_executor_orders_placed_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: executor
+        annotations:
+          summary: "High order cancellation rate"
+          description: "{{ $value | humanizePercentage }} of orders being cancelled"
+
+      - alert: HighSignalRejectionRate
+        expr: rate(aibetting_executor_signals_rejected_total[5m]) / rate(aibetting_executor_signals_received_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: risk
+        annotations:
+          summary: "High signal rejection rate"
+          description: "{{ $value | humanizePercentage }} of signals being rejected by risk validator"
+
+      # ================================================
+      # Service Availability Alerts
+      # ================================================
+      - alert: ExecutorDown
+        expr: up{job="aibetting-executor"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: executor
+        annotations:
+          summary: "Executor service is down"
+          description: "AIBetting Executor has been unreachable for 1 minute"
+
+      - alert: AnalystDown
+        expr: up{job="aibetting-analyst"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: analyst
+        annotations:
+          summary: "Analyst service is down"
+          description: "AIBetting Analyst has been unreachable for 2 minutes"
+
+      - alert: ExplorerDown
+        expr: up{job="aibetting-explorer"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: explorer
+        annotations:
+          summary: "Explorer service is down"
+          description: "AIBetting Explorer has been unreachable for 2 minutes"
+
+      # ================================================
+      # Data Flow Alerts
+      # ================================================
+      - alert: NoSignalsReceived
+        expr: rate(aibetting_executor_signals_received_total[5m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          component: signals
+        annotations:
+          summary: "No trading signals received"
+          description: "Executor hasn't received signals for 10 minutes - check Analyst service"
+
+      - alert: NoOrdersPlaced
+        expr: rate(aibetting_executor_orders_placed_total[10m]) == 0
+        for: 15m
+        labels:
+          severity: info
+          component: executor
+        annotations:
+          summary: "No orders placed recently"
+          description: "No orders have been placed for 15 minutes - may be normal if no opportunities"
+
+      # ================================================
+      # API Health Alerts
+      # ================================================
+      - alert: HighBetfairAPIErrorRate
+        expr: rate(aibetting_executor_betfair_api_errors_total[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          component: betfair
+        annotations:
+          summary: "High Betfair API error rate"
+          description: "{{ $value | humanize }} API errors per second (threshold: 0.05/s)"
+
+      - alert: BetfairAPIErrorSpike
+        expr: increase(aibetting_executor_betfair_api_errors_total[1m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+          component: betfair
+        annotations:
+          summary: "Betfair API error spike detected"
+          description: "More than 10 API errors in last minute"
+
+      # ================================================
+      # Performance Degradation Alerts
+      # ================================================
+      - alert: PerformanceDegradation
+        expr: |
+          (
+            histogram_quantile(0.99, rate(aibetting_executor_order_execution_latency_seconds_bucket[5m])) 
+            / 
+            histogram_quantile(0.99, rate(aibetting_executor_order_execution_latency_seconds_bucket[30m] offset 30m))
+          ) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Performance degradation detected"
+          description: "P99 latency is 50% higher than 30 minutes ago"
+
+      # ================================================
+      # Resource Utilization (requires node_exporter)
+      # ================================================
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% (threshold: 80%)"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}% (threshold: 85%)"

@@ -1,0 +1,224 @@
+# Alertmanager Configuration
+# Save as: alertmanager.yml
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'aibetting-alerts@example.com'
+  smtp_auth_username: 'your-email@gmail.com'
+  smtp_auth_password: 'your-app-password'
+
+# Templates for notification formatting
+templates:
+  - '/etc/alertmanager/*.tmpl'
+
+# Routes define how alerts are grouped and where they go
+route:
+  group_by: ['alertname', 'severity', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'default'
+  
+  # Child routes for specific alert types
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      continue: false
+      group_wait: 0s
+      repeat_interval: 1h
+    
+    # Warning alerts - batched notification
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      repeat_interval: 4h
+    
+    # Info alerts - daily digest
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_wait: 5m
+      repeat_interval: 24h
+
+    # Executor-specific alerts
+    - match:
+        service: executor
+      receiver: 'executor-team'
+      continue: true
+
+    # Circuit breaker alerts - highest priority
+    - match:
+        alert_type: circuit_breaker
+      receiver: 'emergency-alerts'
+      group_wait: 0s
+      repeat_interval: 30m
+
+# Inhibition rules - suppress alerts when others are active
+inhibit_rules:
+  # Suppress warning if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service']
+
+  # Suppress low balance warning if critical balance alert is firing
+  - source_match:
+      alertname: 'CriticalAccountBalance'
+    target_match:
+      alertname: 'LowAccountBalance'
+    equal: ['service']
+
+  # Suppress individual service alerts if ExecutorDown is firing
+  - source_match:
+      alertname: 'ExecutorDown'
+    target_match_re:
+      alertname: '(HighOrderFailureRate|HighSignalRejectionRate|HighExecutionLatency)'
+    equal: ['instance']
+
+# Receivers define notification channels
+receivers:
+  # Default receiver (catch-all)
+  - name: 'default'
+    email_configs:
+      - to: 'team@example.com'
+        headers:
+          Subject: '[AIBetting] Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>{{ .GroupLabels.alertname }}</h2>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>Service:</strong> {{ .GroupLabels.service }}</p>
+          {{ range .Alerts }}
+          <hr>
+          <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Started at:</strong> {{ .StartsAt }}</p>
+          {{ end }}
+
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'critical-alerts@example.com'
+        send_resolved: true
+        headers:
+          Subject: '🚨 [CRITICAL] {{ .GroupLabels.alertname }}'
+    # Slack webhook (example)
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#aibetting-alerts'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          *Severity:* {{ .GroupLabels.severity }}
+          *Service:* {{ .GroupLabels.service }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Action:* {{ .Annotations.action }}
+          {{ end }}
+        send_resolved: true
+    # PagerDuty integration (example)
+    # pagerduty_configs:
+    #   - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+    #     description: '{{ .GroupLabels.alertname }}'
+
+  # Warning alerts - email only
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'warnings@example.com'
+        send_resolved: true
+        headers:
+          Subject: '⚠️ [WARNING] {{ .GroupLabels.alertname }}'
+
+  # Info alerts - digest format
+  - name: 'info-alerts'
+    email_configs:
+      - to: 'info@example.com'
+        send_resolved: false
+        headers:
+          Subject: 'ℹ️ [INFO] Daily Alert Digest'
+
+  # Executor team specific
+  - name: 'executor-team'
+    email_configs:
+      - to: 'executor-team@example.com'
+        headers:
+          Subject: '[Executor] {{ .GroupLabels.alertname }}'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#executor-alerts'
+        username: 'AIBetting Executor Bot'
+        icon_emoji: ':robot_face:'
+        title: '{{ .GroupLabels.alertname }}'
+        text: |
+          *Service:* {{ .GroupLabels.service }}
+          *Severity:* {{ .GroupLabels.severity }}
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ end }}
+
+  # Emergency alerts (circuit breaker, system down)
+  - name: 'emergency-alerts'
+    email_configs:
+      - to: 'emergency@example.com,cto@example.com'
+        send_resolved: true
+        headers:
+          Subject: '🔴 [EMERGENCY] {{ .GroupLabels.alertname }}'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#incidents'
+        title: '🔴 EMERGENCY: {{ .GroupLabels.alertname }}'
+        text: |
+          @channel IMMEDIATE ACTION REQUIRED
+          *Alert:* {{ .GroupLabels.alertname }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+    # SMS notification via Twilio (example)
+    # webhook_configs:
+    #   - url: 'https://api.twilio.com/2010-04-01/Accounts/YOUR_ACCOUNT/Messages.json'
+    #     http_config:
+    #       basic_auth:
+    #         username: 'YOUR_TWILIO_ACCOUNT_SID'
+    #         password: 'YOUR_TWILIO_AUTH_TOKEN'
+
+# ============================================
+# Alternative Configurations (Examples)
+# ============================================
+
+# Telegram Bot Notifications
+# - name: 'telegram'
+#   telegram_configs:
+#     - bot_token: 'YOUR_TELEGRAM_BOT_TOKEN'
+#       chat_id: YOUR_CHAT_ID
+#       parse_mode: 'HTML'
+#       message: |
+#         <b>{{ .GroupLabels.alertname }}</b>
+#         Severity: {{ .GroupLabels.severity }}
+#         {{ range .Alerts }}
+#         {{ .Annotations.summary }}
+#         {{ end }}
+
+# Microsoft Teams Webhook
+# - name: 'teams'
+#   webhook_configs:
+#     - url: 'YOUR_TEAMS_WEBHOOK_URL'
+#       send_resolved: true
+
+# Discord Webhook
+# - name: 'discord'
+#   webhook_configs:
+#     - url: 'YOUR_DISCORD_WEBHOOK_URL'
+#       send_resolved: true
+
+# OpsGenie Integration
+# - name: 'opsgenie'
+#   opsgenie_configs:
+#     - api_key: 'YOUR_OPSGENIE_API_KEY'
+#       message: '{{ .GroupLabels.alertname }}'
+#       description: '{{ .Annotations.description }}'
+#       priority: '{{ if eq .GroupLabels.severity "critical" }}P1{{ else }}P3{{ end }}'
