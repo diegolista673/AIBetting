@@ -1,0 +1,206 @@
+@page "/"
+@using AIBettingBlazorDashboard.Services
+@using AIBettingBlazorDashboard.Components.Cards
+@using AIBettingBlazorDashboard.Components.Charts
+@using AIBettingBlazorDashboard.Components.Grafana
+@using AIBettingBlazorDashboard.Components.Controls
+@using Microsoft.AspNetCore.SignalR.Client
+@using MudBlazor
+@inject NavigationManager Navigation
+@inject PrometheusService PrometheusService
+@inject ILogger<Dashboard> Logger
+@implements IAsyncDisposable
+
+<PageTitle>AIBetting Dashboard</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">AIBetting Dashboard</MudText>
+
+@if (_metrics != null)
+{
+    <!-- STATUS ROW -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <StatusCard Title="Explorer" IsUp="_metrics.ExplorerUp" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <StatusCard Title="Analyst" IsUp="_metrics.AnalystUp" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <StatusCard Title="Executor" IsUp="_metrics.ExecutorUp" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MetricCard Title="Balance" 
+                       Value="_metrics.AccountBalance" 
+                       Unit="£" 
+                       Icon="@Icons.Material.Filled.AccountBalance"
+                       IconColor="@(_metrics.AccountBalance > 500 ? Color.Success : Color.Warning)" />
+        </MudItem>
+    </MudGrid>
+
+    <!-- KPI ROW -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MetricCard Title="Orders/min" 
+                       Value="_metrics.OrdersPerMinute" 
+                       Format="N1"
+                       Icon="@Icons.Material.Filled.TrendingUp"
+                       IconColor="Color.Primary" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MetricCard Title="Signals/min" 
+                       Value="_metrics.SignalsPerMinute" 
+                       Format="N1"
+                       Icon="@Icons.Material.Filled.Insights"
+                       IconColor="Color.Info" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MetricCard Title="Exposure" 
+                       Value="_metrics.CurrentExposure" 
+                       Unit="£"
+                       Icon="@Icons.Material.Filled.Warning"
+                       IconColor="@(_metrics.CurrentExposure > 400 ? Color.Warning : Color.Success)" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MetricCard Title="Latency P99" 
+                       Value="_metrics.ExecutorLatencyP99 * 1000" 
+                       Unit="ms"
+                       Format="N0"
+                       Icon="@Icons.Material.Filled.Speed"
+                       IconColor="@(_metrics.ExecutorLatencyP99 > 0.2 ? Color.Warning : Color.Success)" />
+        </MudItem>
+    </MudGrid>
+
+    <!-- CIRCUIT BREAKER -->
+    @if (_metrics.CircuitBreakerTriggered)
+    {
+        <MudGrid Class="mb-4">
+            <MudItem xs="12">
+                <CircuitBreakerPanel IsTriggered="_metrics.CircuitBreakerTriggered" 
+                                    IsTriggeredChanged="OnCircuitBreakerChanged" />
+            </MudItem>
+        </MudGrid>
+    }
+
+    <!-- LIVE CHARTS ROW -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="6">
+            <LiveChart Title="Orders Flow (last 5 min)" 
+                      Query="rate(aibetting_executor_orders_placed_total[1m]) * 60"
+                      Color="Color.Primary"
+                      Height="300" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <LiveChart Title="Signals Generated (last 5 min)" 
+                      Query="rate(aibetting_analyst_signals_generated_total[1m]) * 60"
+                      Color="Color.Success"
+                      Height="300" />
+        </MudItem>
+    </MudGrid>
+
+    <!-- GRAFANA EMBEDS -->
+    <MudGrid>
+        <MudItem xs="12">
+            <GrafanaEmbed Title="System Overview - Last Hour"
+                         DashboardUid="aibetting-overview"
+                         From="now-1h"
+                         To="now"
+                         Height="600" />
+        </MudItem>
+    </MudGrid>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" Class="d-flex justify-center align-center" Style="height: 400px;">
+            <div class="text-center">
+                <MudProgressCircular Size="Size.Large" Indeterminate="true" />
+                <MudText Typo="Typo.h6" Class="mt-4">Loading dashboard...</MudText>
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private SystemMetrics? _metrics;
+    private HubConnection? _hubConnection;
+    private System.Threading.Timer? _refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMetricsAsync();
+        await InitializeSignalRAsync();
+        StartPeriodicRefresh();
+    }
+
+    private async Task LoadMetricsAsync()
+    {
+        try
+        {
+            _metrics = await PrometheusService.GetSystemMetricsAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading metrics");
+        }
+    }
+
+    private async Task InitializeSignalRAsync()
+    {
+        try
+        {
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/metricshub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<SystemMetrics>("UpdateMetrics", metrics =>
+            {
+                _metrics = metrics;
+                InvokeAsync(StateHasChanged);
+            });
+
+            await _hubConnection.StartAsync();
+            Logger.LogInformation("SignalR connected");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "SignalR connection failed, using polling fallback");
+        }
+    }
+
+    private void StartPeriodicRefresh()
+    {
+        // Fallback polling if SignalR fails
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            if (_hubConnection?.State != HubConnectionState.Connected)
+            {
+                await LoadMetricsAsync();
+            }
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task OnCircuitBreakerChanged(bool isTriggered)
+    {
+        if (_metrics != null)
+        {
+            _metrics.CircuitBreakerTriggered = isTriggered;
+            StateHasChanged();
+        }
+
+        // Refresh metrics after reset
+        await Task.Delay(2000);
+        await LoadMetricsAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _refreshTimer?.Dispose();
+        
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

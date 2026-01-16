@@ -1,0 +1,25 @@
+@using MudBlazor
+
+<MudCard Elevation="2">
+    <MudCardContent>
+        <div class="d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.body2" Color="Color.Default">@Title</MudText>
+                <MudText Typo="Typo.h5">@StatusText</MudText>
+            </div>
+            <MudIcon Icon="@Icon" Color="@IconColor" Size="Size.Large" />
+        </div>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsUp { get; set; }
+
+    private string StatusText => IsUp ? "UP" : "DOWN";
+    private string Icon => IsUp ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error;
+    private Color IconColor => IsUp ? Color.Success : Color.Error;
+}

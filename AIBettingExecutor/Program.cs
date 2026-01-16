@@ -26,14 +26,21 @@ try
     Log.Information("🚀 AIBetting Executor starting");
     Log.Information("=================================");
 
-    // Load configuration
-    var configuration = new ConfigurationBuilder()
-        .SetBasePath(AppContext.BaseDirectory)
-        .AddJsonFile("appsettings.json", optional: false)
-        .AddEnvironmentVariables()
-        .Build();
+    var builder = WebApplication.CreateBuilder(args);
 
-    var config = configuration.GetSection("Executor").Get<ExecutorConfiguration>() 
+    // Configure Kestrel to listen on specific port
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ListenAnyIP(5004); // API port
+    });
+
+    // Add Serilog
+    builder.Host.UseSerilog();
+
+    // Load Executor configuration
+    builder.Services.Configure<ExecutorConfiguration>(builder.Configuration.GetSection("Executor"));
+
+    var config = builder.Configuration.GetSection("Executor").Get<ExecutorConfiguration>() 
         ?? new ExecutorConfiguration();
 
     // Validate configuration only when not using mock client
@@ -61,7 +68,23 @@ try
     Log.Information("  Use Mock Betfair: {UseMock}", config.Trading.UseMockBetfair ? "YES" : "NO");
     Log.Information("  Prometheus Port: {Port}", config.PrometheusMetricsPort);
 
-    // Start Prometheus metrics server using Kestrel to avoid HttpListener ACL issues
+    // Add services
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+
+    // Add CORS
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowDashboard", policy =>
+        {
+            policy.WithOrigins("http://localhost:5000")
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+    });
+
+    // Start Prometheus metrics server using Kestrel
     var metricsServer = new KestrelMetricServer(port: config.PrometheusMetricsPort);
     metricsServer.Start();
     Log.Information("📊 Prometheus metrics server started on port {Port}", config.PrometheusMetricsPort);
@@ -69,16 +92,19 @@ try
     // Initialize Redis
     Log.Information("Connecting to Redis...");
     var redis = await ConnectionMultiplexer.ConnectAsync(config.Redis.ConnectionString);
+    builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
     Log.Information("✅ Redis connected");
 
-    // Initialize components
+    // Initialize components - use logger from DI after app is built
     IBetfairClient betfairClient = config.Trading.UseMockBetfair
-        ? new MockBetfairClient(Log.ForContext<MockBetfairClient>())
+        ? new MockBetfairClient(null!)  // Logger will be injected later
         : new BetfairClient(
             config.Betfair.AppKey,
             config.Betfair.CertificatePath,
             config.Betfair.CertificatePassword,
-            Log.ForContext<BetfairClient>());
+            null); // Logger will be injected later
+
+    builder.Services.AddSingleton(betfairClient);
 
     var orderManager = new OrderManager(
         betfairClient,
@@ -88,7 +114,9 @@ try
             StatusCheckIntervalSeconds = config.OrderManager.StatusCheckIntervalSeconds,
             MaxOrdersPerCheck = config.OrderManager.MaxOrdersPerCheck
         },
-        Log.ForContext<OrderManager>());
+        null); // Logger will be injected later
+
+    builder.Services.AddSingleton(orderManager);
 
     var signalProcessor = new SignalProcessor(
         redis,
@@ -98,10 +126,13 @@ try
             SubscribeToStrategySignals = config.SignalProcessor.SubscribeToStrategySignals,
             MaxSignalAgeSeconds = config.SignalProcessor.MaxSignalAgeSeconds
         },
-        Log.ForContext<SignalProcessor>());
+        null); // Logger will be injected later
+
+    builder.Services.AddSingleton(signalProcessor);
 
     // Initialize Risk Manager
     var riskManager = new RedisRiskManager(redis);
+    builder.Services.AddSingleton<IRiskManager>(riskManager);
 
     var riskValidator = new RiskValidator(
         riskManager,
@@ -110,14 +141,18 @@ try
             Enabled = config.Risk.Enabled,
             CircuitBreakerEnabled = config.Risk.CircuitBreakerEnabled
         },
-        Log.ForContext<RiskValidator>());
+        null); // Logger will be injected later
+
+    builder.Services.AddSingleton(riskValidator);
 
     var tradeLogger = new TradeLogger(
         redis,
         config.Trading.CommissionRate,
-        Log.ForContext<TradeLogger>());
+        null); // Logger will be injected later
 
-    // Initialize ExecutorService
+    builder.Services.AddSingleton(tradeLogger);
+
+    // Initialize ExecutorService as hosted service
     var executorService = new ExecutorService(
         betfairClient,
         orderManager,
@@ -125,19 +160,57 @@ try
         riskValidator,
         tradeLogger,
         config,
-        Log.ForContext<ExecutorService>());
+        null); // Logger will be injected later
 
-    // Setup cancellation
-    using var cts = new CancellationTokenSource();
-    Console.CancelKeyPress += (sender, e) =>
+    builder.Services.AddSingleton(executorService);
+    builder.Services.AddHostedService<ExecutorBackgroundService>();
+
+    var app = builder.Build();
+
+    // Configure middleware
+    if (app.Environment.IsDevelopment())
     {
-        e.Cancel = true;
-        Log.Information("Shutdown requested...");
-        cts.Cancel();
-    };
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "AIBetting Executor API v1");
+            c.RoutePrefix = "swagger"; // Set Swagger UI at /swagger
+        });
+    }
 
-    // Run executor
-    await executorService.RunAsync(cts.Token);
+    app.UseCors("AllowDashboard");
+    app.UseAuthorization();
+
+    // Add explicit root endpoint
+    app.MapGet("/", () => Results.Json(new
+    {
+        service = "AIBetting Executor API",
+        version = "1.0.0",
+        status = "running",
+        endpoints = new
+        {
+            swagger = "/swagger",
+            health = "/api/health",
+            circuitBreaker = "/api/circuit-breaker",
+            trading = "/api/trading",
+            config = "/api/config"
+        }
+    })).ExcludeFromDescription();
+
+    // Add health check endpoint
+    app.MapGet("/api/health", () => Results.Ok(new
+    {
+        status = "healthy",
+        timestamp = DateTime.UtcNow,
+        service = "executor"
+    })).ExcludeFromDescription();
+
+    app.MapControllers();
+
+    Log.Information("✅ Executor API ready on http://localhost:5004");
+    Log.Information("✅ Swagger UI: http://localhost:5004/swagger");
+
+    await app.RunAsync();
 
     Log.Information("Executor stopped successfully");
 }
@@ -150,4 +223,22 @@ finally
     Log.CloseAndFlush();
 }
 
-Console.WriteLine("Hello, World!");
+// Background service wrapper for ExecutorService
+public class ExecutorBackgroundService : BackgroundService
+{
+    private readonly ExecutorService _executorService;
+    private readonly ILogger<ExecutorBackgroundService> _logger;
+
+    public ExecutorBackgroundService(ExecutorService executorService, ILogger<ExecutorBackgroundService> logger)
+    {
+        _executorService = executorService;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("ExecutorBackgroundService starting");
+        await _executorService.RunAsync(stoppingToken);
+        _logger.LogInformation("ExecutorBackgroundService stopped");
+    }
+}

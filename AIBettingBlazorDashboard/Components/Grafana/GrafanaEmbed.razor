@@ -1,0 +1,59 @@
+@using MudBlazor
+
+<MudCard Elevation="2">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@Title</MudText>
+            </CardHeaderContent>
+            <CardHeaderActions>
+                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
+                              Href="@GrafanaDirectUrl" 
+                              Target="_blank" 
+                              Color="Color.Primary" />
+            </CardHeaderActions>
+        </MudCardHeader>
+    }
+    <MudCardContent Style="padding: 0;">
+        <iframe src="@IframeUrl" 
+                width="100%" 
+                height="@Height" 
+                frameborder="0"
+                style="border: none;">
+        </iframe>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    [EditorRequired]
+    public string DashboardUid { get; set; } = string.Empty;
+
+    [Parameter]
+    public string From { get; set; } = "now-1h";
+
+    [Parameter]
+    public string To { get; set; } = "now";
+
+    [Parameter]
+    public int Height { get; set; } = 500;
+
+    [Parameter]
+    public string GrafanaUrl { get; set; } = "http://localhost:3000";
+
+    [Parameter]
+    public bool Theme { get; set; } = true; // true = dark, false = light
+
+    [Parameter]
+    public int Refresh { get; set; } = 5; // seconds
+
+    private string IframeUrl => 
+        $"{GrafanaUrl}/d-solo/{DashboardUid}?orgId=1&from={From}&to={To}&theme={(Theme ? "dark" : "light")}&refresh={Refresh}s&kiosk";
+
+    private string GrafanaDirectUrl => 
+        $"{GrafanaUrl}/d/{DashboardUid}?orgId=1&from={From}&to={To}";
+}

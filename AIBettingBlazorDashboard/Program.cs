@@ -1,5 +1,8 @@
 using AIBettingBlazorDashboard.Components;
 using AIBettingBlazorDashboard.Configuration;
+using AIBettingBlazorDashboard.Services;
+using AIBettingBlazorDashboard.Hubs;
+using AIBettingBlazorDashboard.BackgroundServices;
 using MudBlazor.Services;
 using Serilog;
 using StackExchange.Redis;
@@ -17,6 +20,7 @@ namespace AIBettingBlazorDashboard
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .WriteTo.File(path: "logs/blazordashboard-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7, fileSizeLimitBytes: 10_000_000)
+                .WriteTo.Console()
                 .CreateLogger();
             builder.Host.UseSerilog();
 
@@ -26,16 +30,33 @@ namespace AIBettingBlazorDashboard
 
             builder.Services.AddMudServices();
 
+            // SignalR for real-time updates with JSON config for NaN/Infinity
+            builder.Services.AddSignalR()
+                .AddJsonProtocol(options =>
+                {
+                    options.PayloadSerializerOptions.NumberHandling = 
+                        System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals;
+                });
+
+            // HTTP Clients
+            builder.Services.AddHttpClient("Prometheus");
+            builder.Services.AddHttpClient("Executor");
+
             // Configure Monitoring settings
             builder.Services.Configure<MonitoringConfiguration>(
                 builder.Configuration.GetSection("Monitoring"));
 
-            // Redis connection for reading live data
-            //builder.Services.AddSingleton(async (sp) =>
-            //{
-            //    var connString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? "localhost:6379,abortConnect=false";
-            //    return await ConnectionMultiplexer.ConnectAsync(connString);
-            //});
+            // Custom services
+            builder.Services.AddSingleton<PrometheusService>();
+            builder.Services.AddSingleton<ExecutorApiService>();
+            
+            // Background service for streaming metrics
+            builder.Services.AddHostedService<MetricsStreamerService>();
+
+            // Redis connection (optional, for future use)
+            var redisConnectionString = builder.Configuration["Redis:ConnectionString"] ?? "localhost:16379,abortConnect=false";
+            builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
+                ConnectionMultiplexer.Connect(redisConnectionString));
 
             var app = builder.Build();
 
@@ -52,10 +73,14 @@ namespace AIBettingBlazorDashboard
             app.UseAntiforgery();
 
             app.MapStaticAssets();
+            
+            // Map SignalR hub
+            app.MapHub<MetricsHub>("/metricshub");
+            
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode();
 
-            Log.Information("Blazor Dashboard starting");
+            Log.Information("✅ Blazor Dashboard starting on port {Port}", builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5000");
             app.Run();
             Log.Information("Blazor Dashboard stopped");
         }

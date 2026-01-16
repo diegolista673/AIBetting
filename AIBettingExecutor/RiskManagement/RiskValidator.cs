@@ -10,13 +10,13 @@ namespace AIBettingExecutor.RiskManagement;
 public class RiskValidator
 {
     private readonly IRiskManager _riskManager;
-    private readonly ILogger _logger;
+    private readonly Serilog.ILogger _logger;
     private readonly RiskValidatorConfiguration _config;
 
     public RiskValidator(
         IRiskManager riskManager,
         RiskValidatorConfiguration config,
-        ILogger? logger = null)
+        Serilog.ILogger? logger = null)
     {
         _riskManager = riskManager;
         _config = config;

@@ -254,5 +254,20 @@ namespace AIBettingCore.Services
 
             return value.HasValue && decimal.TryParse(value.ToString(), out var pnl) ? pnl : 0m;
         }
+
+        /// <inheritdoc/>
+        public async Task<bool> IsCircuitBreakerTriggeredAsync()
+        {
+            var value = await _db.StringGetAsync(RedisKeys.CircuitBreakerStatus);
+            return value.HasValue && value.ToString() == "1";
+        }
+
+        /// <inheritdoc/>
+        public async Task ResetCircuitBreakerAsync()
+        {
+            await _db.StringSetAsync(RedisKeys.CircuitBreakerStatus, "0");
+            // Also clear failed orders window
+            await _db.KeyDeleteAsync(RedisKeys.FailedOrders);
+        }
     }
 }

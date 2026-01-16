@@ -39,6 +39,11 @@ public class ExecutorConfiguration
     /// Prometheus metrics port.
     /// </summary>
     public int PrometheusMetricsPort { get; init; } = 5003;
+
+    /// <summary>
+    /// API HTTP port for control endpoints.
+    /// </summary>
+    public int ApiPort { get; init; } = 5004;
 }
 
 /// <summary>

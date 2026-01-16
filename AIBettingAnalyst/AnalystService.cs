@@ -345,18 +345,6 @@ public class AnalystService
 
         SnapshotsProcessed.Inc();
 
-        // // Track market history (limited by MaxHistoryDepth)
-        // if (!_marketHistory.ContainsKey(snapshot.MarketId.Value))
-        // {
-        //     _marketHistory[snapshot.MarketId.Value] = new List<MarketSnapshot>();
-        // }
-        // var history = _marketHistory[snapshot.MarketId.Value];
-        // history.Add(snapshot);
-        // if (history.Count > MaxHistoryDepth)
-        // {
-        //     history.RemoveAt(0); // Remove oldest snapshot
-        // }
-
         // Perform analysis
         await AnalyzeMarket(snapshot);
 

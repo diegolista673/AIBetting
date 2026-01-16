@@ -138,6 +138,11 @@ namespace AIBettingCore
         public const string FailedOrders = "failed:orders";
 
         /// <summary>
+        /// Circuit breaker status key. Value: "0" = open, "1" = triggered.
+        /// </summary>
+        public const string CircuitBreakerStatus = "circuit-breaker:status";
+
+        /// <summary>
         /// Pub/Sub channel for price updates broadcast.
         /// </summary>
         public const string ChannelPriceUpdates = "channel:price-updates";

@@ -13,14 +13,14 @@ namespace AIBettingExecutor.Accounting;
 public class TradeLogger
 {
     private readonly IConnectionMultiplexer _redis;
-    private readonly ILogger _logger;
+    private readonly Serilog.ILogger _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly decimal _commissionRate;
 
     public TradeLogger(
         IConnectionMultiplexer redis,
         decimal commissionRate = 0.05m,
-        ILogger? logger = null)
+        Serilog.ILogger? logger = null)
     {
         _redis = redis;
         _commissionRate = commissionRate;

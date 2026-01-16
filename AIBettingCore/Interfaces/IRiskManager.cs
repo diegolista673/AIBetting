@@ -65,6 +65,17 @@ namespace AIBettingCore.Interfaces
         /// <param name="limits">New risk limits.</param>
         /// <param name="ct">Cancellation token.</param>
         Task UpdateRiskLimitsAsync(RiskLimits limits, CancellationToken ct);
+
+        /// <summary>
+        /// Checks if the circuit breaker is currently triggered.
+        /// </summary>
+        /// <returns>True if circuit breaker is triggered, false otherwise.</returns>
+        Task<bool> IsCircuitBreakerTriggeredAsync();
+
+        /// <summary>
+        /// Manually resets the circuit breaker to allow trading to resume.
+        /// </summary>
+        Task ResetCircuitBreakerAsync();
     }
 
     /// <summary>

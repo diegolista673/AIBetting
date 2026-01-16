@@ -1,0 +1,111 @@
+@using AIBettingBlazorDashboard.Services
+@using MudBlazor
+@inject PrometheusService PrometheusService
+@inject ILogger<LiveChart> Logger
+
+<MudCard Elevation="2">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">@Title</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                          Color="Color.Primary" 
+                          OnClick="RefreshDataAsync"
+                          Disabled="_isLoading" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center align-center" style="height: @(Height)px;">
+                <MudProgressCircular Indeterminate="true" />
+            </div>
+        }
+        else if (_dataPoints.Any())
+        {
+            <MudSimpleTable Hover="true" Dense="true" Style="@($"height: {Height}px; overflow-y: auto;")">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var point in _dataPoints.OrderByDescending(p => p.Timestamp).Take(10))
+                    {
+                        <tr>
+                            <td>@point.Timestamp.ToString("HH:mm:ss")</td>
+                            <td>
+                                <MudChip T="string" Color="@Color" Size="Size.Small">
+                                    @point.Value.ToString("N2")
+                                </MudChip>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            
+            <MudText Typo="Typo.caption" Class="mt-2">
+                Last updated: @_lastUpdate.ToString("HH:mm:ss") | 
+                Data points: @_dataPoints.Count | 
+                Avg: @_dataPoints.Average(p => p.Value).ToString("N2")
+            </MudText>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info">No data available. Click refresh to load.</MudAlert>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Live Chart";
+
+    [Parameter]
+    public string Query { get; set; } = string.Empty;
+
+    [Parameter]
+    public int Height { get; set; } = 300;
+
+    [Parameter]
+    public int MinutesHistory { get; set; } = 5;
+
+    [Parameter]
+    public Color Color { get; set; } = Color.Primary;
+
+    private List<PrometheusDataPoint> _dataPoints = new();
+    private bool _isLoading;
+    private DateTime _lastUpdate = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshDataAsync();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _dataPoints = await PrometheusService.GetMetricRangeAsync(Query, MinutesHistory);
+            _lastUpdate = DateTime.Now;
+            
+            Logger.LogInformation("Loaded {Count} data points for query: {Query}", _dataPoints.Count, Query);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing chart data for query: {Query}", Query);
+            _dataPoints = new List<PrometheusDataPoint>();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+}
+

@@ -7,13 +7,13 @@ namespace AIBettingExecutor.BetfairAPI;
 
 public class MockBetfairClient : IBetfairClient
 {
-    private readonly ILogger _log;
+    private readonly Serilog.ILogger _log;
     public bool IsAuthenticated { get; private set; } = true;
     public string? SessionToken { get; private set; } = "mock-token";
 
-    public MockBetfairClient(ILogger log)
+    public MockBetfairClient(Serilog.ILogger? log)
     {
-        _log = log;
+        _log = log ?? Log.ForContext<MockBetfairClient>();
     }
 
     public Task<bool> AuthenticateAsync(CancellationToken ct = default)

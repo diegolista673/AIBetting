@@ -11,7 +11,7 @@ namespace AIBettingExecutor.OrderManagement;
 public class OrderManager
 {
     private readonly IBetfairClient _betfairClient;
-    private readonly ILogger _logger;
+    private readonly Serilog.ILogger _logger;
     private readonly ConcurrentDictionary<string, ManagedOrder> _activeOrders;
     private readonly OrderManagerConfiguration _config;
     private readonly Timer _monitoringTimer;
@@ -19,7 +19,7 @@ public class OrderManager
     public OrderManager(
         IBetfairClient betfairClient,
         OrderManagerConfiguration config,
-        ILogger? logger = null)
+        Serilog.ILogger? logger = null)
     {
         _betfairClient = betfairClient;
         _config = config;

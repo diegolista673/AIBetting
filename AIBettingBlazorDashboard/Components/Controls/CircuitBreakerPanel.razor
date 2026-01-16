@@ -1,0 +1,101 @@
+@using AIBettingBlazorDashboard.Services
+@using MudBlazor
+@inject ExecutorApiService ExecutorApi
+@inject ISnackbar Snackbar
+
+<MudCard Elevation="2">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Circuit Breaker Control</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <div class="d-flex align-center justify-space-between mb-4">
+            <div>
+                <MudText Typo="Typo.body2" Color="Color.Default">Status</MudText>
+                <MudChip T="string" Color="@StatusColor" Size="Size.Large">
+                    <MudIcon Icon="@StatusIcon" Size="Size.Medium" Class="mr-2" />
+                    @StatusText
+                </MudChip>
+            </div>
+        </div>
+
+        @if (IsTriggered)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                <MudText Typo="Typo.body1"><strong>TRADING HALTED!</strong></MudText>
+                <MudText Typo="Typo.body2">Circuit breaker was triggered due to excessive failures.</MudText>
+                <MudText Typo="Typo.body2">Manual reset required to resume trading.</MudText>
+            </MudAlert>
+
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Warning" 
+                      FullWidth="true"
+                      Size="Size.Large"
+                      StartIcon="@Icons.Material.Filled.RestartAlt"
+                      OnClick="ResetCircuitBreakerAsync"
+                      Disabled="_isResetting">
+                @if (_isResetting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Resetting...</span>
+                }
+                else
+                {
+                    <span>Reset Circuit Breaker</span>
+                }
+            </MudButton>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Success" Variant="Variant.Filled">
+                <MudText Typo="Typo.body1"><strong>System Operating Normally</strong></MudText>
+                <MudText Typo="Typo.body2">Circuit breaker is open. Trading can proceed.</MudText>
+            </MudAlert>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public bool IsTriggered { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsTriggeredChanged { get; set; }
+
+    private bool _isResetting;
+
+    private string StatusText => IsTriggered ? "TRIGGERED" : "OPEN";
+    private Color StatusColor => IsTriggered ? Color.Error : Color.Success;
+    private string StatusIcon => IsTriggered ? Icons.Material.Filled.Error : Icons.Material.Filled.CheckCircle;
+
+    private async Task ResetCircuitBreakerAsync()
+    {
+        _isResetting = true;
+        StateHasChanged();
+
+        try
+        {
+            var success = await ExecutorApi.ResetCircuitBreakerAsync();
+
+            if (success)
+            {
+                Snackbar.Add("Circuit breaker reset successfully!", Severity.Success);
+                await IsTriggeredChanged.InvokeAsync(false);
+            }
+            else
+            {
+                Snackbar.Add("Failed to reset circuit breaker. Check Executor logs.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isResetting = false;
+            StateHasChanged();
+        }
+    }
+}

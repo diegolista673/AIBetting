@@ -25,7 +25,7 @@ public class ExecutorService
     private readonly SignalProcessor _signalProcessor;
     private readonly RiskValidator _riskValidator;
     private readonly TradeLogger _tradeLogger;
-    private readonly ILogger _logger;
+    private readonly Serilog.ILogger _logger;
     private readonly ExecutorConfiguration _config;
 
     private Timer? _balanceUpdateTimer;
@@ -38,7 +38,7 @@ public class ExecutorService
         RiskValidator riskValidator,
         TradeLogger tradeLogger,
         ExecutorConfiguration config,
-        ILogger? logger = null)
+        Serilog.ILogger? logger = null)
     {
         _betfairClient = betfairClient;
         _orderManager = orderManager;

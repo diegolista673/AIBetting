@@ -1,0 +1,274 @@
+@page "/executor"
+@using AIBettingBlazorDashboard.Services
+@using AIBettingBlazorDashboard.Components.Controls
+@using MudBlazor
+@inject ExecutorApiService ExecutorApi
+@inject ISnackbar Snackbar
+
+<PageTitle>Executor Control</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Executor Control Panel</MudText>
+
+<MudGrid>
+    <!-- Circuit Breaker Panel -->
+    <MudItem xs="12" md="6">
+        <CircuitBreakerPanel IsTriggered="_isCircuitBreakerTriggered" 
+                            IsTriggeredChanged="OnCircuitBreakerChanged" />
+    </MudItem>
+
+    <!-- Trading Control -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Trading Control</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <div class="d-flex flex-column gap-3">
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Warning" 
+                              FullWidth="true"
+                              Size="Size.Large"
+                              StartIcon="@Icons.Material.Filled.Pause"
+                              OnClick="PauseTradingAsync"
+                              Disabled="_isPausing">
+                        @if (_isPausing)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Pausing...</span>
+                        }
+                        else
+                        {
+                            <span>Pause Trading</span>
+                        }
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Success" 
+                              FullWidth="true"
+                              Size="Size.Large"
+                              StartIcon="@Icons.Material.Filled.PlayArrow"
+                              OnClick="ResumeTradingAsync"
+                              Disabled="_isResuming">
+                        @if (_isResuming)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Resuming...</span>
+                        }
+                        else
+                        {
+                            <span>Resume Trading</span>
+                        }
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Risk Configuration -->
+    <MudItem xs="12">
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Risk Configuration</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              StartIcon="@Icons.Material.Filled.Refresh"
+                              OnClick="LoadRiskConfigAsync"
+                              Size="Size.Small">
+                        Reload
+                    </MudButton>
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_riskConfig != null)
+                {
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudSwitch @bind-Value="_riskConfig.Enabled" 
+                                      Label="Risk Management Enabled" 
+                                      Color="Color.Primary" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudSwitch @bind-Value="_riskConfig.CircuitBreakerEnabled" 
+                                      Label="Circuit Breaker Enabled" 
+                                      Color="Color.Primary" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudNumericField @bind-Value="_riskConfig.MaxStakePerOrder"
+                                            Label="Max Stake Per Order"
+                                            Variant="Variant.Outlined"
+                                            Adornment="Adornment.Start"
+                                            AdornmentText="£"
+                                            Min="1m"
+                                            Step="10m" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudNumericField @bind-Value="_riskConfig.MaxExposurePerMarket"
+                                            Label="Max Exposure Per Market"
+                                            Variant="Variant.Outlined"
+                                            Adornment="Adornment.Start"
+                                            AdornmentText="£"
+                                            Min="10m"
+                                            Step="50m" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudNumericField @bind-Value="_riskConfig.MaxExposurePerSelection"
+                                            Label="Max Exposure Per Selection"
+                                            Variant="Variant.Outlined"
+                                            Adornment="Adornment.Start"
+                                            AdornmentText="£"
+                                            Min="10m"
+                                            Step="25m" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudNumericField @bind-Value="_riskConfig.MaxDailyLoss"
+                                            Label="Max Daily Loss"
+                                            Variant="Variant.Outlined"
+                                            Adornment="Adornment.Start"
+                                            AdornmentText="£"
+                                            Min="10m"
+                                            Step="50m" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudNumericField @bind-Value="_riskConfig.CircuitBreakerFailureThreshold"
+                                            Label="CB Failure Threshold"
+                                            Variant="Variant.Outlined"
+                                            Min="1"
+                                            Step="1" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudNumericField @bind-Value="_riskConfig.CircuitBreakerWindowMinutes"
+                                            Label="CB Window (minutes)"
+                                            Variant="Variant.Outlined"
+                                            Min="1"
+                                            Step="5" />
+                        </MudItem>
+
+                        <MudItem xs="12" Class="d-flex justify-end">
+                            <MudButton Variant="Variant.Filled" 
+                                      Color="Color.Primary" 
+                                      StartIcon="@Icons.Material.Filled.Save"
+                                      OnClick="SaveRiskConfigAsync"
+                                      Disabled="_isSaving"
+                                      Size="Size.Large">
+                                @if (_isSaving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span>Save Changes</span>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                }
+                else
+                {
+                    <div class="d-flex justify-center align-center" style="height: 200px;">
+                        <MudProgressCircular Indeterminate="true" />
+                    </div>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private bool _isCircuitBreakerTriggered;
+    private bool _isPausing;
+    private bool _isResuming;
+    private bool _isSaving;
+    private RiskConfig? _riskConfig;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRiskConfigAsync();
+    }
+
+    private async Task LoadRiskConfigAsync()
+    {
+        _riskConfig = await ExecutorApi.GetRiskConfigAsync();
+        StateHasChanged();
+    }
+
+    private async Task SaveRiskConfigAsync()
+    {
+        if (_riskConfig == null) return;
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var success = await ExecutorApi.UpdateRiskConfigAsync(_riskConfig);
+
+            if (success)
+            {
+                Snackbar.Add("Risk configuration saved successfully!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to save risk configuration.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PauseTradingAsync()
+    {
+        _isPausing = true;
+        StateHasChanged();
+
+        try
+        {
+            var success = await ExecutorApi.PauseTradingAsync();
+            Snackbar.Add(success ? "Trading paused!" : "Failed to pause trading.", 
+                        success ? Severity.Success : Severity.Error);
+        }
+        finally
+        {
+            _isPausing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResumeTradingAsync()
+    {
+        _isResuming = true;
+        StateHasChanged();
+
+        try
+        {
+            var success = await ExecutorApi.ResumeTradingAsync();
+            Snackbar.Add(success ? "Trading resumed!" : "Failed to resume trading.", 
+                        success ? Severity.Success : Severity.Error);
+        }
+        finally
+        {
+            _isResuming = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnCircuitBreakerChanged(bool isTriggered)
+    {
+        _isCircuitBreakerTriggered = isTriggered;
+        StateHasChanged();
+    }
+}

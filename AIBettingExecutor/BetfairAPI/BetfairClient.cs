@@ -17,7 +17,7 @@ public class BetfairClient : IBetfairClient, IDisposable
     private readonly string _appKey;
     private readonly string _certPath;
     private readonly string _certPassword;
-    private readonly ILogger _logger;
+    private readonly Serilog.ILogger _logger;
     private readonly JsonSerializerOptions _jsonOptions;
 
     private string? _sessionToken;
@@ -29,7 +29,7 @@ public class BetfairClient : IBetfairClient, IDisposable
     public bool IsAuthenticated => !string.IsNullOrEmpty(_sessionToken) && DateTimeOffset.UtcNow < _sessionExpiry;
     public string? SessionToken => _sessionToken;
 
-    public BetfairClient(string appKey, string certPath, string certPassword, ILogger? logger = null)
+    public BetfairClient(string appKey, string certPath, string certPassword, Serilog.ILogger? logger = null)
     {
         _appKey = appKey;
         _certPath = certPath;

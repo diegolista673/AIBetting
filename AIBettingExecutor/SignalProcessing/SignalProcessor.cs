@@ -12,7 +12,7 @@ namespace AIBettingExecutor.SignalProcessing;
 public class SignalProcessor
 {
     private readonly IConnectionMultiplexer _redis;
-    private readonly ILogger _logger;
+    private readonly Serilog.ILogger _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly SignalProcessorConfiguration _config;
 
@@ -22,7 +22,7 @@ public class SignalProcessor
     public SignalProcessor(
         IConnectionMultiplexer redis,
         SignalProcessorConfiguration config,
-        ILogger? logger = null)
+        Serilog.ILogger? logger = null)
     {
         _redis = redis;
         _config = config;

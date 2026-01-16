@@ -1,0 +1,38 @@
+@using MudBlazor
+
+<MudCard Elevation="2">
+    <MudCardContent>
+        <div class="d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.body2" Color="Color.Default">@Title</MudText>
+                <MudText Typo="Typo.h4">@FormattedValue</MudText>
+            </div>
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <MudIcon Icon="@Icon" Color="@IconColor" Size="Size.Large" />
+            }
+        </div>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public double Value { get; set; }
+
+    [Parameter]
+    public string Unit { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Icon { get; set; }
+
+    [Parameter]
+    public Color IconColor { get; set; } = Color.Primary;
+
+    [Parameter]
+    public string Format { get; set; } = "N2";
+
+    private string FormattedValue => $"{Value.ToString(Format)} {Unit}".Trim();
+}
